@@ -13,8 +13,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `pnpm dev`: dev server (Turbopack) on http://localhost:3000
 - `pnpm build`: production build, also type-checks
 - `pnpm lint`: ESLint (flat config in `eslint.config.mjs`)
+- `pnpm test`: Node's built-in runner (`node --test`, no dependency) on `**/*.test.mjs`; one test: `node --test --test-name-pattern="<name>"`. Test files are `.mjs` importing `.ts` directly (Node strips types), so they stay out of the Next type-check.
 
-No test runner is set up yet. `INTENT.md` requires business rules and filters to be checked automatically, so one is needed with the first business rule.
+## Layers
+
+- `lib/games-store.ts`: data access (libSQL: `local.db` file locally, Turso when `TURSO_DATABASE_URL`/`TURSO_AUTH_TOKEN` are set). No business rules.
+- `lib/game-rules.ts`: pure business rules, filters and sort from `INTENT.md`. Tested in `lib/game-rules.test.mjs`.
+- `lib/games.ts`: business layer, the only entry point for `app/`; validates with the rules, then calls the store.
 
 ## Stack and layout
 
