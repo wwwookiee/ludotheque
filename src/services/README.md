@@ -1,1 +1,1 @@
-Couche service : règles métier pures, testées. N'importe jamais `@libsql/client`.
+Couche service : règles métier pures, testées. Définit `GameRepository`. N'importe jamais `@libsql/client` ni `src/data`.
