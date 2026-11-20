@@ -15,7 +15,7 @@ const colors = [
   ["secondary", "bg-secondary", "text-secondary-foreground"],
   ["muted", "bg-muted", "text-muted-foreground"],
   ["accent", "bg-accent", "text-accent-foreground"],
-  ["destructive", "bg-destructive", "text-white"],
+  ["destructive", "bg-destructive", "text-background"],
   ["border", "bg-border", "text-foreground"],
   ["input", "bg-input", "text-foreground"],
   ["ring", "bg-ring", "text-background"],
