@@ -1,12 +1,12 @@
 import { describe, expect, test, vi } from "vitest";
-import { addGame, cleanName, listGames, normalizeKey, type Game, type GameRepository } from "./games";
+import { addGame, cleanName, DuplicateGameError, listGames, normalizeKey, type Game, type GameRepository } from "./games";
 
 function fakeRepo(initial: Game[] = []) {
   const games = [...initial];
   const repo: GameRepository = {
     list: async () => [...games],
     create: vi.fn(async (g) => {
-      const game = { id: String(games.length + 1), ...g };
+      const game = { id: String(games.length + 1), name: g.name, status: g.status };
       games.push(game);
       return game;
     }),
@@ -37,7 +37,7 @@ describe("addGame", () => {
     const repo = fakeRepo();
     const result = await addGame(repo, { name: "  Les   Colons " });
     expect(result).toMatchObject({ ok: true, game: { name: "Les Colons", status: "envie" } });
-    expect(repo.create).toHaveBeenCalledWith({ name: "Les Colons", status: "envie" });
+    expect(repo.create).toHaveBeenCalledWith({ name: "Les Colons", key: "les colons", status: "envie" });
   });
 
   test.each(["", "   "])("critère 3 : nom vide (%j) refusé, règle nommée", async (name) => {
@@ -54,5 +54,15 @@ describe("addGame", () => {
     expect(result).toMatchObject({ ok: false, error: { rule: "name-duplicate" } });
     if (!result.ok) expect(result.error.message).toMatch(/déjà/);
     expect(repo.create).not.toHaveBeenCalled();
+  });
+
+  test("critère 4 : deux ajouts simultanés, le dépôt refuse le second → doublon, pas d'exception", async () => {
+    const repo: GameRepository = {
+      list: async () => [],
+      create: async () => {
+        throw new DuplicateGameError();
+      },
+    };
+    expect(await addGame(repo, { name: "Catan" })).toMatchObject({ ok: false, error: { rule: "name-duplicate" } });
   });
 });

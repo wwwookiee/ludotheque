@@ -2,7 +2,15 @@ export const GAME_STATUSES = ["possede", "envie"] as const;
 export type GameStatus = (typeof GAME_STATUSES)[number];
 
 export type Game = { id: string; name: string; status: GameStatus };
-export type NewGame = { name: string; status: GameStatus };
+// key : clé d'unicité calculée par le service (normalizeKey) ; le dépôt la rend unique.
+export type NewGame = { name: string; key: string; status: GameStatus };
+
+// Levée par un dépôt quand la clé existe déjà (deux ajouts simultanés, par exemple).
+export class DuplicateGameError extends Error {
+  constructor() {
+    super("Un jeu porte déjà ce nom.");
+  }
+}
 
 export interface GameRepository {
   list(): Promise<Game[]>;
@@ -33,8 +41,12 @@ export async function addGame(repo: GameRepository, input: { name: string }): Pr
   if (!name) return { ok: false, error: { rule: "name-required", message: "Le nom est obligatoire." } };
 
   const key = normalizeKey(name);
-  if ((await repo.list()).some((g) => normalizeKey(g.name) === key)) {
-    return { ok: false, error: { rule: "name-duplicate", message: "Un jeu porte déjà ce nom." } };
+  const duplicate = { ok: false, error: { rule: "name-duplicate", message: "Un jeu porte déjà ce nom." } } as const;
+  if ((await repo.list()).some((g) => normalizeKey(g.name) === key)) return duplicate;
+  try {
+    return { ok: true, game: await repo.create({ name, key, status: "envie" }) };
+  } catch (e) {
+    if (e instanceof DuplicateGameError) return duplicate; // le dépôt a refusé : un autre ajout est passé entre-temps
+    throw e;
   }
-  return { ok: true, game: await repo.create({ name, status: "envie" }) };
 }
