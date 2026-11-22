@@ -1,6 +1,4 @@
-import { expect, test } from "vitest";
 import { createMemoryRepository } from "./memory-repository";
+import { describeRepositoryContract } from "./repository.contract";
 
-test("le dépôt mémoire est vide", async () => {
-  expect(await createMemoryRepository().list()).toEqual([]);
-});
+describeRepositoryContract("mémoire", () => createMemoryRepository());
