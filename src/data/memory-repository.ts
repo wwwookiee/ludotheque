@@ -2,37 +2,35 @@ import { DuplicateGameError, GAME_STATUSES, type Game, type GameRepository } fro
 
 // Pour les tests et les exemples : ne persiste rien.
 export function createMemoryRepository(): GameRepository {
-  const games: Game[] = [];
-  const keys = new Map<string, string>(); // clé → id
+  const rows: { game: Game; key: string }[] = [];
+  const taken = (key: string, except?: string) => rows.some((r) => r.key === key && r.game.id !== except);
+  const checkStatus = (status: string) => {
+    if (!(GAME_STATUSES as readonly string[]).includes(status)) throw new Error(`Statut inconnu : ${status}`);
+  };
+
   return {
-    list: async () => [...games],
-    create: async (input) => {
-      if (!GAME_STATUSES.includes(input.status)) throw new Error(`Statut inconnu : ${input.status}`);
-      if (keys.has(input.key)) throw new DuplicateGameError();
-      const { key, ...rest } = input;
+    list: async () => rows.map((r) => r.game),
+    create: async ({ key, ...rest }) => {
+      checkStatus(rest.status);
+      if (taken(key)) throw new DuplicateGameError();
       const game = { id: crypto.randomUUID(), ...rest };
-      keys.set(key, game.id);
-      games.push(game);
+      rows.push({ game, key });
       return game;
     },
-    remove: async (id) => {
-      const i = games.findIndex((g) => g.id === id);
-      if (i < 0) return false;
-      games.splice(i, 1);
-      for (const [k, v] of keys) if (v === id) keys.delete(k);
-      return true;
+    update: async (id, { key, ...rest }) => {
+      const row = rows.find((r) => r.game.id === id);
+      if (!row) return null;
+      checkStatus(rest.status);
+      if (taken(key, id)) throw new DuplicateGameError();
+      row.game = { id, ...rest };
+      row.key = key;
+      return row.game;
     },
-    update: async (id, input) => {
-      const i = games.findIndex((g) => g.id === id);
-      if (i < 0) return null;
-      if (!GAME_STATUSES.includes(input.status)) throw new Error(`Statut inconnu : ${input.status}`);
-      const owner = keys.get(input.key);
-      if (owner !== undefined && owner !== id) throw new DuplicateGameError();
-      for (const [k, v] of keys) if (v === id) keys.delete(k);
-      const { key, ...rest } = input;
-      keys.set(key, id);
-      games[i] = { id, ...rest };
-      return games[i];
+    remove: async (id) => {
+      const i = rows.findIndex((r) => r.game.id === id);
+      if (i < 0) return false;
+      rows.splice(i, 1);
+      return true;
     },
   };
 }

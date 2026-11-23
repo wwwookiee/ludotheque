@@ -7,7 +7,9 @@ paths:
 
 - Seule couche qui parle à la base (Turso, `@libsql/client`).
 - Implémente `GameRepository` (défini dans `src/services`). Stocke et lit, sans règle métier :
-  validation, unicité et tri restent au service.
+  validation, calcul de la clé d'unicité (`normalizeKey`) et tri restent au service. Le dépôt
+  garantit seulement que la clé est unique (index unique) et lève `DuplicateGameError` sinon :
+  le service ne relit pas toute la table pour vérifier les doublons.
 - Requêtes paramétrées uniquement, jamais de SQL concaténé.
 - Les erreurs de la base sont converties en erreurs du domaine : rien de libSQL ne remonte.
 - Chaque implémentation passe la même suite de tests de contrat, pour que changer de stockage

@@ -1,30 +1,32 @@
 import { describe, expect, test, vi } from "vitest";
 import { addGame, cleanName, DuplicateGameError, listGames, normalizeKey, queryGames, removeGame, updateGame, type Game, type GameRepository } from "./games";
 
+// Faux dépôt : même contrat que les vrais (clé unique → DuplicateGameError, absent → null / false), espionné pour vérifier les appels.
+// Le service n'a pas le droit d'importer src/data, même en test : le vrai dépôt mémoire est couvert par la suite de contrat.
 function fakeRepo(initial: Game[] = []) {
-  const games = [...initial];
+  const rows = initial.map((game) => ({ game, key: normalizeKey(game.name) }));
+  const taken = (key: string, except?: string) => rows.some((r) => r.key === key && r.game.id !== except);
   const repo: GameRepository = {
-    list: async () => [...games],
-    create: vi.fn(async (g) => {
-      const { key, ...rest } = g;
-      void key;
-      const game = { id: String(games.length + 1), ...rest };
-      games.push(game);
+    list: async () => rows.map((r) => r.game),
+    create: vi.fn(async ({ key, ...rest }) => {
+      if (taken(key)) throw new DuplicateGameError();
+      const game = { id: crypto.randomUUID(), ...rest };
+      rows.push({ game, key });
       return game;
     }),
-    remove: vi.fn(async (id) => {
-      const i = games.findIndex((x) => x.id === id);
-      if (i < 0) return false;
-      games.splice(i, 1);
-      return true;
+    update: vi.fn(async (id, { key, ...rest }) => {
+      const row = rows.find((r) => r.game.id === id);
+      if (!row) return null;
+      if (taken(key, id)) throw new DuplicateGameError();
+      row.game = { id, ...rest };
+      row.key = key;
+      return row.game;
     }),
-    update: vi.fn(async (id, g) => {
-      const i = games.findIndex((x) => x.id === id);
-      if (i < 0) return null;
-      const { key, ...rest } = g;
-      void key;
-      games[i] = { id, ...rest };
-      return games[i];
+    remove: vi.fn(async (id) => {
+      const i = rows.findIndex((r) => r.game.id === id);
+      if (i < 0) return false;
+      rows.splice(i, 1);
+      return true;
     }),
   };
   return repo;
@@ -69,7 +71,7 @@ describe("addGame", () => {
     const result = await addGame(repo, { name });
     expect(result).toMatchObject({ ok: false, error: { rule: "name-duplicate" } });
     if (!result.ok) expect(result.error.message).toMatch(/déjà/);
-    expect(repo.create).not.toHaveBeenCalled();
+    expect(await repo.list()).toHaveLength(1);
   });
 
   test("critère 4 : deux ajouts simultanés, le dépôt refuse le second → doublon, pas d'exception", async () => {
@@ -198,7 +200,7 @@ describe("updateGame · lot 3 : modifier un jeu, mêmes règles que l'ajout", ()
     const repo = fakeRepo([catan, azul]);
     const result = await updateGame(repo, "2", { name: "Catan" });
     expect(result).toMatchObject({ ok: false, error: { rule: "name-duplicate", fields: ["name"] } });
-    expect(repo.update).not.toHaveBeenCalled();
+    expect((await repo.list()).map((g) => g.name)).toEqual(["Catan", "Azul"]);
   });
 
   test.each(["Catan", "CATAN", "  cätan "])("critère 3 : garder le même nom (%j) est accepté, le jeu ne se compare pas à lui-même", async (name) => {
@@ -229,7 +231,7 @@ describe("updateGame · lot 3 : modifier un jeu, mêmes règles que l'ajout", ()
   test("jeu introuvable → erreur « game-not-found », rien n'est écrit", async () => {
     const repo = fakeRepo([catan]);
     expect(await updateGame(repo, "99", { name: "Azul" })).toMatchObject({ ok: false, error: { rule: "game-not-found" } });
-    expect(repo.update).not.toHaveBeenCalled();
+    expect(await repo.list()).toEqual([catan]);
   });
 
   test("deux modifications simultanées vers le même nom : le dépôt refuse la seconde → doublon, pas d'exception", async () => {
@@ -287,12 +289,12 @@ describe("recherche · lot 5 : listGames filtré par nom", () => {
 
   test("critère 5 : après ajout, modification, suppression, la même recherche reste appliquée", async () => {
     const repo = fakeRepo([game("1", "Catan")]);
-    await addGame(repo, { name: "Catane" });
+    const catane = await addGame(repo, { name: "Catane" });
     await addGame(repo, { name: "Azul" });
     expect(await names(repo, "an")).toEqual(["Catan", "Catane"]);
     await updateGame(repo, "1", { name: "Colons" });
     expect(await names(repo, "an")).toEqual(["Catane"]);
-    await removeGame(repo, "2");
+    if (catane.ok) await removeGame(repo, catane.game.id);
     expect(await names(repo, "an")).toEqual([]);
   });
 });

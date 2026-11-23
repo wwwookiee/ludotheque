@@ -23,6 +23,7 @@ export class DuplicateGameError extends Error {
   }
 }
 
+// Le service calcule la clé (normalizeKey) ; le dépôt garantit qu'elle est unique et lève DuplicateGameError sinon.
 export interface GameRepository {
   list(): Promise<Game[]>;
   create(game: NewGame): Promise<Game>;
@@ -135,26 +136,21 @@ const duplicate = () => refuse("name-duplicate", "Un jeu porte déjà ce nom.", 
 export async function addGame(repo: GameRepository, input: AddGameInput): Promise<AddGameResult> {
   const checked = validate(input);
   if (!checked.ok) return checked;
-  if ((await repo.list()).some((g) => normalizeKey(g.name) === checked.value.key)) return duplicate();
   try {
     return { ok: true, game: await repo.create(checked.value) };
   } catch (e) {
-    if (e instanceof DuplicateGameError) return duplicate(); // le dépôt a refusé : un autre ajout est passé entre-temps
+    if (e instanceof DuplicateGameError) return duplicate(); // le dépôt garantit l'unicité de la clé
     throw e;
   }
 }
 
-// Modifie un jeu : mêmes règles que l'ajout, sauf que le jeu ne se compare pas à lui-même pour l'unicité.
+// Modifie un jeu : mêmes règles que l'ajout ; le dépôt ne compare pas un jeu à lui-même pour l'unicité.
 export async function updateGame(repo: GameRepository, id: string, input: AddGameInput): Promise<AddGameResult> {
   const checked = validate(input);
   if (!checked.ok) return checked;
-  const notFound = refuse("game-not-found", "Ce jeu n'existe plus.");
-  const games = await repo.list();
-  if (!games.some((g) => g.id === id)) return notFound;
-  if (games.some((g) => g.id !== id && normalizeKey(g.name) === checked.value.key)) return duplicate();
   try {
     const game = await repo.update(id, checked.value);
-    return game ? { ok: true, game } : notFound;
+    return game ? { ok: true, game } : refuse("game-not-found", "Ce jeu n'existe plus.");
   } catch (e) {
     if (e instanceof DuplicateGameError) return duplicate();
     throw e;
