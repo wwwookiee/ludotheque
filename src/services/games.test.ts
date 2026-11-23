@@ -258,6 +258,35 @@ describe("removeGame · lot 4 : supprimer un jeu", () => {
   });
 });
 
+describe("longueur maximale des textes (#18) : refusée avant le dépôt", () => {
+  const long = (n: number) => "a".repeat(n);
+
+  test.each([
+    [{ name: long(101) }, "name-too-long", ["name"]],
+    [{ name: "Catan", publisher: long(101) }, "publisher-too-long", ["publisher"]],
+    [{ name: "Catan", notes: long(2001) }, "notes-too-long", ["notes"]],
+  ])("%# : ajout refusé (%s), le dépôt n'est pas appelé", async (input, rule, fields) => {
+    const repo = fakeRepo();
+    expect(await addGame(repo, input)).toMatchObject({ ok: false, error: { rule, fields, message: expect.stringMatching(/caractères/) } });
+    expect(repo.create).not.toHaveBeenCalled();
+  });
+
+  test("modification : même règle, le dépôt n'est pas appelé", async () => {
+    const repo = fakeRepo([game("1", "Catan")]);
+    expect(await updateGame(repo, "1", { name: "Catan", notes: long(2001) })).toMatchObject({ ok: false, error: { rule: "notes-too-long" } });
+    expect(repo.update).not.toHaveBeenCalled();
+  });
+
+  test("à la limite exacte (100, 100, 2000) : accepté", async () => {
+    const result = await addGame(fakeRepo(), { name: long(100), publisher: long(100), notes: long(2000) });
+    expect(result).toMatchObject({ ok: true });
+  });
+
+  test("la longueur se mesure après nettoyage : espaces autour ignorés", async () => {
+    expect(await addGame(fakeRepo(), { name: `  ${long(100)}  ` })).toMatchObject({ ok: true });
+  });
+});
+
 describe("identifiant forgé (#19) : refusé avant le dépôt", () => {
   // Un id arrive du client : une action serveur peut être appelée avec n'importe quelle valeur sérialisable.
   const forged: unknown[] = [{}, ["1"], 1, null, undefined, ""];
