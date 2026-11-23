@@ -26,6 +26,8 @@ export class DuplicateGameError extends Error {
 export interface GameRepository {
   list(): Promise<Game[]>;
   create(game: NewGame): Promise<Game>;
+  // Remplace tous les champs du jeu. null si le jeu n'existe pas ; DuplicateGameError si la clé est prise par un autre jeu.
+  update(id: string, game: NewGame): Promise<Game | null>;
 }
 
 export type AddGameRule =
@@ -36,7 +38,8 @@ export type AddGameRule =
   | "players-positive-integer"
   | "players-min-max"
   | "duration-positive-integer"
-  | "age-positive-integer";
+  | "age-positive-integer"
+  | "game-not-found";
 // Champs de la saisie fautifs, pour que la présentation signale le bon champ.
 export type AddGameField = "name" | "status" | "minPlayers" | "maxPlayers" | "duration" | "minAge";
 export type AddGameError = { rule: AddGameRule; message: string; fields: AddGameField[] };
@@ -84,7 +87,8 @@ function optionalText(raw: string | undefined): string | undefined {
   return cleanName(raw ?? "") || undefined;
 }
 
-export async function addGame(repo: GameRepository, input: AddGameInput): Promise<AddGameResult> {
+// Valide et convertit la saisie brute. Partagé par l'ajout et la modification : mêmes règles.
+function validate(input: AddGameInput): { ok: true; value: NewGame } | { ok: false; error: AddGameError } {
   const name = cleanName(input.name);
   if (!name) return refuse("name-required", "Le nom est obligatoire.", "name");
 
@@ -102,16 +106,38 @@ export async function addGame(repo: GameRepository, input: AddGameInput): Promis
   const minAge = positiveInt(input.minAge);
   if (minAge === null) return refuse("age-positive-integer", "L'âge minimum doit être un entier supérieur à 0 (en années).", "minAge");
 
-  const key = normalizeKey(name);
-  const duplicate = refuse("name-duplicate", "Un jeu porte déjà ce nom.", "name");
-  if ((await repo.list()).some((g) => normalizeKey(g.name) === key)) return duplicate;
-
   const details = { minPlayers, maxPlayers, duration, minAge, publisher: optionalText(input.publisher), notes: input.notes?.trim() || undefined };
   const present = Object.fromEntries(Object.entries(details).filter(([, v]) => v !== undefined));
+  return { ok: true, value: { name, key: normalizeKey(name), status: status as GameStatus, ...present } };
+}
+
+const duplicate = () => refuse("name-duplicate", "Un jeu porte déjà ce nom.", "name");
+
+export async function addGame(repo: GameRepository, input: AddGameInput): Promise<AddGameResult> {
+  const checked = validate(input);
+  if (!checked.ok) return checked;
+  if ((await repo.list()).some((g) => normalizeKey(g.name) === checked.value.key)) return duplicate();
   try {
-    return { ok: true, game: await repo.create({ name, key, status: status as GameStatus, ...present }) };
+    return { ok: true, game: await repo.create(checked.value) };
   } catch (e) {
-    if (e instanceof DuplicateGameError) return duplicate; // le dépôt a refusé : un autre ajout est passé entre-temps
+    if (e instanceof DuplicateGameError) return duplicate(); // le dépôt a refusé : un autre ajout est passé entre-temps
+    throw e;
+  }
+}
+
+// Modifie un jeu : mêmes règles que l'ajout, sauf que le jeu ne se compare pas à lui-même pour l'unicité.
+export async function updateGame(repo: GameRepository, id: string, input: AddGameInput): Promise<AddGameResult> {
+  const checked = validate(input);
+  if (!checked.ok) return checked;
+  const notFound = refuse("game-not-found", "Ce jeu n'existe plus.");
+  const games = await repo.list();
+  if (!games.some((g) => g.id === id)) return notFound;
+  if (games.some((g) => g.id !== id && normalizeKey(g.name) === checked.value.key)) return duplicate();
+  try {
+    const game = await repo.update(id, checked.value);
+    return game ? { ok: true, game } : notFound;
+  } catch (e) {
+    if (e instanceof DuplicateGameError) return duplicate();
     throw e;
   }
 }

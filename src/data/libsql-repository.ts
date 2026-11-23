@@ -90,6 +90,23 @@ export function createLibsqlRepository(client: Client, options: { keyOf?: (name:
       void key;
       return { id, ...game };
     },
+    async update(id, input) {
+      await init();
+      let rowsAffected: number;
+      try {
+        ({ rowsAffected } = await client.execute({
+          sql: "UPDATE games SET name = ?, key = ?, status = ?, min_players = ?, max_players = ?, duration = ?, min_age = ?, publisher = ?, notes = ? WHERE id = ?",
+          args: [input.name, input.key, input.status, input.minPlayers ?? null, input.maxPlayers ?? null, input.duration ?? null, input.minAge ?? null, input.publisher ?? null, input.notes ?? null, id],
+        }));
+      } catch (e) {
+        if (e instanceof Error && e.message.includes("UNIQUE constraint failed")) throw new DuplicateGameError();
+        throw e;
+      }
+      if (rowsAffected === 0) return null;
+      const { key, ...game } = input;
+      void key;
+      return { id, ...game };
+    },
   };
 }
 

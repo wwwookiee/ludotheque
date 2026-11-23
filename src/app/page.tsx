@@ -1,11 +1,11 @@
 import { Suspense } from "react";
-import { addGameAction } from "@/app/actions";
+import { addGameAction, updateGameAction } from "@/app/actions";
 import { AddGameForm } from "@/components/add-game-form";
 import { GameList } from "@/components/game-list";
 import { games } from "@/container";
 
 async function Games() {
-  return <GameList games={await games.list()} />;
+  return <GameList games={await games.list()} updateAction={updateGameAction} />;
 }
 
 export default function Home() {

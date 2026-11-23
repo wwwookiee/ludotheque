@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
-import { addGame, cleanName, DuplicateGameError, listGames, normalizeKey, type Game, type GameRepository } from "./games";
+import { addGame, cleanName, DuplicateGameError, listGames, normalizeKey, updateGame, type Game, type GameRepository } from "./games";
 
 function fakeRepo(initial: Game[] = []) {
   const games = [...initial];
@@ -11,6 +11,14 @@ function fakeRepo(initial: Game[] = []) {
       const game = { id: String(games.length + 1), ...rest };
       games.push(game);
       return game;
+    }),
+    update: vi.fn(async (id, g) => {
+      const i = games.findIndex((x) => x.id === id);
+      if (i < 0) return null;
+      const { key, ...rest } = g;
+      void key;
+      games[i] = { id, ...rest };
+      return games[i];
     }),
   };
   return repo;
@@ -64,6 +72,7 @@ describe("addGame", () => {
       create: async () => {
         throw new DuplicateGameError();
       },
+      update: async () => null,
     };
     expect(await addGame(repo, { name: "Catan" })).toMatchObject({ ok: false, error: { rule: "name-duplicate" } });
   });
@@ -164,5 +173,63 @@ describe("addGame · champs fautifs (pour que la présentation signale le bon ch
 
   test("un doublon désigne le champ nom", async () => {
     expect(await addGame(fakeRepo([game("1", "Catan")]), { name: "catan" })).toMatchObject({ ok: false, error: { rule: "name-duplicate", fields: ["name"] } });
+  });
+});
+
+describe("updateGame · lot 3 : modifier un jeu, mêmes règles que l'ajout", () => {
+  const catan = { id: "1", name: "Catan", status: "envie" as const };
+  const azul = { id: "2", name: "Azul", status: "envie" as const };
+
+  test("critère 1 : « envie » → « possédé » est enregistré", async () => {
+    const repo = fakeRepo([catan, azul]);
+    const result = await updateGame(repo, "1", { name: "Catan", status: "possede" });
+    expect(result).toMatchObject({ ok: true, game: { id: "1", name: "Catan", status: "possede" } });
+    expect(repo.update).toHaveBeenCalledWith("1", { name: "Catan", key: "catan", status: "possede" });
+  });
+
+  test("critère 2 : renommer Azul en « Catan » est refusé (doublon), sur le champ nom", async () => {
+    const repo = fakeRepo([catan, azul]);
+    const result = await updateGame(repo, "2", { name: "Catan" });
+    expect(result).toMatchObject({ ok: false, error: { rule: "name-duplicate", fields: ["name"] } });
+    expect(repo.update).not.toHaveBeenCalled();
+  });
+
+  test.each(["Catan", "CATAN", "  cätan "])("critère 3 : garder le même nom (%j) est accepté, le jeu ne se compare pas à lui-même", async (name) => {
+    const result = await updateGame(fakeRepo([catan, azul]), "1", { name });
+    expect(result).toMatchObject({ ok: true });
+  });
+
+  test("critère 4 : min 5 > max 3 est refusé avec la règle, rien n'est modifié", async () => {
+    const repo = fakeRepo([catan]);
+    const result = await updateGame(repo, "1", { name: "Catan", minPlayers: "5", maxPlayers: "3" });
+    expect(result).toMatchObject({ ok: false, error: { rule: "players-min-max" } });
+    expect(repo.update).not.toHaveBeenCalled();
+  });
+
+  test("les autres règles de l'ajout s'appliquent aussi (nom vide, durée invalide)", async () => {
+    const repo = fakeRepo([catan]);
+    expect(await updateGame(repo, "1", { name: "  " })).toMatchObject({ ok: false, error: { rule: "name-required" } });
+    expect(await updateGame(repo, "1", { name: "Catan", duration: "0" })).toMatchObject({ ok: false, error: { rule: "duration-positive-integer" } });
+  });
+
+  test("un détail vidé est retiré du jeu", async () => {
+    const repo = fakeRepo([{ ...catan, duration: 45, publisher: "Kosmos" }]);
+    const result = await updateGame(repo, "1", { name: "Catan", duration: "", publisher: " " });
+    expect(result).toMatchObject({ ok: true });
+    if (result.ok) expect(Object.keys(result.game).sort()).toEqual(["id", "name", "status"]);
+  });
+
+  test("jeu introuvable → erreur « game-not-found », rien n'est écrit", async () => {
+    const repo = fakeRepo([catan]);
+    expect(await updateGame(repo, "99", { name: "Azul" })).toMatchObject({ ok: false, error: { rule: "game-not-found" } });
+    expect(repo.update).not.toHaveBeenCalled();
+  });
+
+  test("deux modifications simultanées vers le même nom : le dépôt refuse la seconde → doublon, pas d'exception", async () => {
+    const repo = fakeRepo([catan, azul]);
+    repo.update = async () => {
+      throw new DuplicateGameError();
+    };
+    expect(await updateGame(repo, "2", { name: "Colons" })).toMatchObject({ ok: false, error: { rule: "name-duplicate" } });
   });
 });
