@@ -28,6 +28,8 @@ export interface GameRepository {
   create(game: NewGame): Promise<Game>;
   // Remplace tous les champs du jeu. null si le jeu n'existe pas ; DuplicateGameError si la clé est prise par un autre jeu.
   update(id: string, game: NewGame): Promise<Game | null>;
+  // true si le jeu existait et a été supprimé.
+  remove(id: string): Promise<boolean>;
 }
 
 export type AddGameRule =
@@ -140,4 +142,11 @@ export async function updateGame(repo: GameRepository, id: string, input: AddGam
     if (e instanceof DuplicateGameError) return duplicate();
     throw e;
   }
+}
+
+export type RemoveGameResult = { ok: true } | { ok: false; error: AddGameError };
+
+// La confirmation est un geste de l'écran : quand le service reçoit la demande, elle a été faite.
+export async function removeGame(repo: GameRepository, id: string): Promise<RemoveGameResult> {
+  return (await repo.remove(id)) ? { ok: true } : refuse("game-not-found", "Ce jeu n'existe plus.");
 }

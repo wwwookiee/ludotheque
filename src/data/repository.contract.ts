@@ -71,6 +71,28 @@ export function describeRepositoryContract(name: string, make: () => GameReposit
       expect((await repo.list()).map((g) => g.name).sort()).toEqual(["Azul", "Catan"]);
     });
 
+    test("lot 4 : remove supprime le jeu et renvoie true", async () => {
+      const repo = await make();
+      const catan = await repo.create({ name: "Catan", key: "catan", status: "envie" });
+      const azul = await repo.create({ name: "Azul", key: "azul", status: "envie" });
+      expect(await repo.remove(catan.id)).toBe(true);
+      expect(await repo.list()).toEqual([azul]);
+    });
+
+    test("lot 4 : remove d'un id inconnu renvoie false et ne change rien", async () => {
+      const repo = await make();
+      const catan = await repo.create({ name: "Catan", key: "catan", status: "envie" });
+      expect(await repo.remove("inconnu")).toBe(false);
+      expect(await repo.list()).toEqual([catan]);
+    });
+
+    test("lot 4 : une fois supprimé, le nom est de nouveau disponible", async () => {
+      const repo = await make();
+      const { id } = await repo.create({ name: "Catan", key: "catan", status: "envie" });
+      await repo.remove(id);
+      await expect(repo.create({ name: "Catan", key: "catan", status: "envie" })).resolves.toMatchObject({ name: "Catan" });
+    });
+
     test("refuse un statut inconnu", async () => {
       const repo = await make();
       await expect(repo.create({ name: "X", key: "x", status: "nope" as never })).rejects.toThrow();

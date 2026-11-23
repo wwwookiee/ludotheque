@@ -90,6 +90,11 @@ export function createLibsqlRepository(client: Client, options: { keyOf?: (name:
       void key;
       return { id, ...game };
     },
+    async remove(id) {
+      await init();
+      const { rowsAffected } = await client.execute({ sql: "DELETE FROM games WHERE id = ?", args: [id] });
+      return rowsAffected > 0;
+    },
     async update(id, input) {
       await init();
       let rowsAffected: number;

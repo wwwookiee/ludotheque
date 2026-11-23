@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { emptyValues, type AddGameState, type AddGameValues } from "@/components/add-game-values";
+import { emptyValues, type AddGameState, type AddGameValues, type DeleteState } from "@/components/add-game-values";
 import { games } from "@/container";
 
 // Saisie brute du formulaire : que du texte, le service valide et convertit.
@@ -22,4 +22,11 @@ export async function updateGameAction(id: string, _prev: AddGameState, formData
   if (!result.ok) return { error: result.error.message, fields: result.error.fields, values };
   revalidatePath("/");
   return { error: null, fields: [], values };
+}
+
+export async function deleteGameAction(id: string): Promise<DeleteState> {
+  const result = await games.remove(id);
+  if (!result.ok) return { error: result.error.message };
+  revalidatePath("/");
+  return { error: null };
 }

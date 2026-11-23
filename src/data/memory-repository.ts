@@ -15,6 +15,13 @@ export function createMemoryRepository(): GameRepository {
       games.push(game);
       return game;
     },
+    remove: async (id) => {
+      const i = games.findIndex((g) => g.id === id);
+      if (i < 0) return false;
+      games.splice(i, 1);
+      for (const [k, v] of keys) if (v === id) keys.delete(k);
+      return true;
+    },
     update: async (id, input) => {
       const i = games.findIndex((g) => g.id === id);
       if (i < 0) return null;

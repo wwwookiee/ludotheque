@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
-import { addGame, cleanName, DuplicateGameError, listGames, normalizeKey, updateGame, type Game, type GameRepository } from "./games";
+import { addGame, cleanName, DuplicateGameError, listGames, normalizeKey, removeGame, updateGame, type Game, type GameRepository } from "./games";
 
 function fakeRepo(initial: Game[] = []) {
   const games = [...initial];
@@ -11,6 +11,12 @@ function fakeRepo(initial: Game[] = []) {
       const game = { id: String(games.length + 1), ...rest };
       games.push(game);
       return game;
+    }),
+    remove: vi.fn(async (id) => {
+      const i = games.findIndex((x) => x.id === id);
+      if (i < 0) return false;
+      games.splice(i, 1);
+      return true;
     }),
     update: vi.fn(async (id, g) => {
       const i = games.findIndex((x) => x.id === id);
@@ -73,6 +79,7 @@ describe("addGame", () => {
         throw new DuplicateGameError();
       },
       update: async () => null,
+      remove: async () => false,
     };
     expect(await addGame(repo, { name: "Catan" })).toMatchObject({ ok: false, error: { rule: "name-duplicate" } });
   });
@@ -231,5 +238,20 @@ describe("updateGame · lot 3 : modifier un jeu, mêmes règles que l'ajout", ()
       throw new DuplicateGameError();
     };
     expect(await updateGame(repo, "2", { name: "Colons" })).toMatchObject({ ok: false, error: { rule: "name-duplicate" } });
+  });
+});
+
+describe("removeGame · lot 4 : supprimer un jeu", () => {
+  test("critère 2 : le jeu supprimé disparaît de la liste", async () => {
+    const repo = fakeRepo([game("1", "Catan"), game("2", "Azul")]);
+    expect(await removeGame(repo, "1")).toEqual({ ok: true });
+    expect((await listGames(repo)).map((g) => g.name)).toEqual(["Azul"]);
+    expect(repo.remove).toHaveBeenCalledWith("1");
+  });
+
+  test("jeu introuvable (déjà supprimé ailleurs) → erreur « game-not-found », pas d'exception", async () => {
+    const repo = fakeRepo([game("1", "Catan")]);
+    expect(await removeGame(repo, "99")).toMatchObject({ ok: false, error: { rule: "game-not-found", message: expect.stringMatching(/n'existe plus/) } });
+    expect(await listGames(repo)).toHaveLength(1);
   });
 });
