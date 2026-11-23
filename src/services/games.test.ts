@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
-import { addGame, cleanName, DuplicateGameError, listGames, normalizeKey, removeGame, updateGame, type Game, type GameRepository } from "./games";
+import { addGame, cleanName, DuplicateGameError, listGames, normalizeKey, queryGames, removeGame, updateGame, type Game, type GameRepository } from "./games";
 
 function fakeRepo(initial: Game[] = []) {
   const games = [...initial];
@@ -294,5 +294,83 @@ describe("recherche · lot 5 : listGames filtré par nom", () => {
     expect(await names(repo, "an")).toEqual(["Catane"]);
     await removeGame(repo, "2");
     expect(await names(repo, "an")).toEqual([]);
+  });
+});
+
+describe("filtres · lot 6 : queryGames (recherche + statut + joueurs + durée)", () => {
+  const catan: Game = { id: "1", name: "Catan", status: "possede", minPlayers: 3, maxPlayers: 4, duration: 60 };
+  const azul: Game = { id: "2", name: "Azul", status: "envie", minPlayers: 2, maxPlayers: 4, duration: 45 };
+  const nu: Game = { id: "3", name: "Mystère", status: "envie" }; // ni joueurs ni durée
+  const repo = () => fakeRepo([catan, azul, nu]);
+  const names = async (raw: Parameters<typeof queryGames>[1]) => {
+    const result = await queryGames(repo(), raw);
+    if (!result.ok) throw new Error(`refusé : ${result.error.rule}`);
+    return result.games.map((g) => g.name);
+  };
+
+  test("critère 5 : sans filtre (état à l'ouverture), tous les jeux, triés", async () => {
+    expect(await names({})).toEqual(["Azul", "Catan", "Mystère"]);
+    expect(await names({ status: "tous", players: "", duration: "", q: "" })).toEqual(["Azul", "Catan", "Mystère"]);
+  });
+
+  test.each([
+    ["possede", ["Catan"]],
+    ["envie", ["Azul", "Mystère"]],
+    ["tous", ["Azul", "Catan", "Mystère"]],
+  ])("critère 1 : statut %s", async (status, expected) => {
+    expect(await names({ status })).toEqual(expected);
+  });
+
+  test.each([
+    ["4", ["Azul", "Catan"]],
+    ["5", []],
+    ["2", ["Azul"]],
+    ["3", ["Azul", "Catan"]],
+    ["1", []],
+  ])("critère 2 : N = %s joueurs (min ≤ N ≤ max)", async (players, expected) => {
+    expect(await names({ players })).toEqual(expected);
+  });
+
+  test.each([
+    ["45", ["Azul"]],
+    ["30", []],
+    ["60", ["Azul", "Catan"]],
+    ["90", ["Azul", "Catan"]],
+  ])("critère 3 : durée X = %s min (durée ≤ X)", async (duration, expected) => {
+    expect(await names({ duration })).toEqual(expected);
+  });
+
+  test("critère 4 : un jeu sans joueurs ou sans durée est masqué quand le filtre correspondant est actif", async () => {
+    expect(await names({ players: "2" })).not.toContain("Mystère");
+    expect(await names({ duration: "120" })).not.toContain("Mystère");
+    expect(await names({ status: "envie" })).toContain("Mystère"); // filtre statut seul : pas masqué
+  });
+
+  test("les filtres se cumulent entre eux et avec la recherche", async () => {
+    expect(await names({ status: "envie", players: "3" })).toEqual(["Azul"]);
+    expect(await names({ q: "a", players: "4", duration: "60" })).toEqual(["Azul", "Catan"]);
+    expect(await names({ q: "cat", status: "envie" })).toEqual([]);
+    expect(await names({ q: "AZUL", status: "envie", players: "2", duration: "45" })).toEqual(["Azul"]);
+  });
+
+  test.each([
+    [{ players: "0" }, "players-filter-integer", ["players"]],
+    [{ players: "-2" }, "players-filter-integer", ["players"]],
+    [{ players: "2.5" }, "players-filter-integer", ["players"]],
+    [{ players: "abc" }, "players-filter-integer", ["players"]],
+    [{ duration: "0" }, "duration-filter-integer", ["duration"]],
+    [{ duration: "-30" }, "duration-filter-integer", ["duration"]],
+    [{ duration: "1.5" }, "duration-filter-integer", ["duration"]],
+    [{ duration: "xx" }, "duration-filter-integer", ["duration"]],
+    [{ status: "perdu" }, "status-filter-invalid", ["status"]],
+  ])("critère 5 : %j refusé (%s)", async (raw, rule, fields) => {
+    const result = await queryGames(repo(), raw);
+    expect(result).toMatchObject({ ok: false, error: { rule, fields } });
+    if (!result.ok) expect(result.error.message.length).toBeGreaterThan(10);
+  });
+
+  test("les espaces autour d'un nombre sont ignorés, vide ou espaces = filtre inactif", async () => {
+    expect(await names({ players: " 4 " })).toEqual(["Azul", "Catan"]);
+    expect(await names({ players: "  ", duration: " " })).toEqual(["Azul", "Catan", "Mystère"]);
   });
 });

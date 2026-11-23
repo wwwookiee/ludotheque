@@ -69,12 +69,21 @@ export function normalizeKey(name: string): string {
   return cleanName(name).normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
 }
 
-export type GameFilters = { q?: string };
+// Filtres interprétés : la recherche, le statut, N joueurs, X minutes. Chacun est facultatif ; ils se cumulent.
+export type GameFilters = { q?: string; status?: GameStatus | "tous"; players?: number; maxDuration?: number };
 
-// Même normalisation que le tri et l'unicité : sans casse, sans accents, espaces réduits.
 export function filterGames(games: Game[], filters: GameFilters = {}): Game[] {
+  // Même normalisation que le tri et l'unicité : sans casse, sans accents, espaces réduits.
   const q = normalizeKey(filters.q ?? "");
-  return q ? games.filter((g) => normalizeKey(g.name).includes(q)) : games;
+  const { status = "tous", players, maxDuration } = filters;
+  return games.filter(
+    (g) =>
+      (!q || normalizeKey(g.name).includes(q)) &&
+      (status === "tous" || g.status === status) &&
+      // Un jeu sans l'information est masqué quand le filtre correspondant est actif.
+      (players === undefined || (g.minPlayers !== undefined && g.maxPlayers !== undefined && g.minPlayers <= players && players <= g.maxPlayers)) &&
+      (maxDuration === undefined || (g.duration !== undefined && g.duration <= maxDuration)),
+  );
 }
 
 export async function listGames(repo: GameRepository, filters: GameFilters = {}): Promise<Game[]> {
@@ -157,4 +166,22 @@ export type RemoveGameResult = { ok: true } | { ok: false; error: AddGameError }
 // La confirmation est un geste de l'écran : quand le service reçoit la demande, elle a été faite.
 export async function removeGame(repo: GameRepository, id: string): Promise<RemoveGameResult> {
   return (await repo.remove(id)) ? { ok: true } : refuse("game-not-found", "Ce jeu n'existe plus.");
+}
+
+// Saisie brute des filtres (paramètres d'URL) : du texte, le service valide et convertit.
+export type RawFilters = { q?: string; status?: string; players?: string; duration?: string };
+export type FilterField = "status" | "players" | "duration";
+export type FilterError = { rule: "status-filter-invalid" | "players-filter-integer" | "duration-filter-integer"; message: string; fields: FilterField[] };
+export type QueryGamesResult = { ok: true; games: Game[] } | { ok: false; error: FilterError };
+
+// Liste filtrée et triée à partir de la saisie brute. Un N ou un X qui n'est pas un entier > 0 est refusé.
+export async function queryGames(repo: GameRepository, raw: RawFilters): Promise<QueryGamesResult> {
+  const fail = (rule: FilterError["rule"], message: string, field: FilterField): QueryGamesResult => ({ ok: false, error: { rule, message, fields: [field] } });
+  const status = raw.status?.trim() || "tous";
+  if (status !== "tous" && !(GAME_STATUSES as readonly string[]).includes(status)) return fail("status-filter-invalid", "Le statut doit être « tous », « possédé » ou « envie ».", "status");
+  const players = positiveInt(raw.players);
+  if (players === null) return fail("players-filter-integer", "Le nombre de joueurs doit être un entier supérieur à 0.", "players");
+  const maxDuration = positiveInt(raw.duration);
+  if (maxDuration === null) return fail("duration-filter-integer", "La durée doit être un entier supérieur à 0 (en minutes).", "duration");
+  return { ok: true, games: await listGames(repo, { q: raw.q, status: status as GameFilters["status"], players, maxDuration }) };
 }

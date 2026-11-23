@@ -1,20 +1,26 @@
 import { Suspense } from "react";
 import { addGameAction, deleteGameAction, updateGameAction } from "@/app/actions";
 import { AddGameForm } from "@/components/add-game-form";
+import { Filters } from "@/components/filters";
 import { GameList } from "@/components/game-list";
-import { SearchBox } from "@/components/search-box";
 import { games } from "@/container";
 
-type SearchParams = Promise<{ q?: string | string[] }>;
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
-// Les paramètres d'URL sont lus dans Suspense (données dynamiques) ; le service interprète la recherche.
+const text = (v: string | string[] | undefined) => (typeof v === "string" ? v : "");
+
+// Les paramètres d'URL sont lus dans Suspense (données dynamiques) ; le service valide et applique les filtres.
 async function Games({ searchParams }: { searchParams: SearchParams }) {
-  const { q } = await searchParams;
-  const search = typeof q === "string" ? q : "";
+  const params = await searchParams;
+  const raw = { q: text(params.q), status: text(params.status) || "tous", players: text(params.players), duration: text(params.duration) };
+  const result = await games.query(raw);
+  // Filtre refusé : on affiche le message du service et la liste sans filtre.
+  const list = result.ok ? result.games : await games.list();
+  const filtered = result.ok && (raw.q.trim() !== "" || raw.status !== "tous" || raw.players.trim() !== "" || raw.duration.trim() !== "");
   return (
     <>
-      <SearchBox value={search} />
-      <GameList games={await games.list({ q: search })} updateAction={updateGameAction} deleteAction={deleteGameAction} filtered={search.trim() !== ""} />
+      <Filters values={raw} error={result.ok ? null : result.error} />
+      <GameList games={list} updateAction={updateGameAction} deleteAction={deleteGameAction} filtered={filtered} />
     </>
   );
 }

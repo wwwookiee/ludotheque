@@ -1,12 +1,13 @@
 // Point d'assemblage : seul endroit qui choisit l'implémentation du stockage.
 import { createLibsqlRepositoryFromEnv } from "@/data/libsql-repository";
-import { addGame, listGames, type GameFilters, normalizeKey, removeGame, updateGame, type AddGameInput } from "@/services/games";
+import { addGame, listGames, normalizeKey, queryGames, removeGame, updateGame, type AddGameInput, type GameFilters, type RawFilters } from "@/services/games";
 
 // keyOf : sert uniquement à migrer une base créée avant la colonne `key`.
 const repo = createLibsqlRepositoryFromEnv({ keyOf: normalizeKey });
 
 export const games = {
   list: (filters?: GameFilters) => listGames(repo, filters),
+  query: (raw: RawFilters) => queryGames(repo, raw),
   add: (input: AddGameInput) => addGame(repo, input),
   update: (id: string, input: AddGameInput) => updateGame(repo, id, input),
   remove: (id: string) => removeGame(repo, id),
