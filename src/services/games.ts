@@ -46,9 +46,12 @@ export type AddGameRule =
   | "players-min-max"
   | "duration-positive-integer"
   | "age-positive-integer"
+  | "name-too-long"
+  | "publisher-too-long"
+  | "notes-too-long"
   | "game-not-found";
 // Champs de la saisie fautifs, pour que la présentation signale le bon champ.
-export type AddGameField = "name" | "status" | "minPlayers" | "maxPlayers" | "duration" | "minAge";
+export type AddGameField = "name" | "status" | "minPlayers" | "maxPlayers" | "duration" | "minAge" | "publisher" | "notes";
 // Un refus : la règle enfreinte, un message en français affiché tel quel, et les champs fautifs.
 export type Refusal<Rule extends string, Field extends string> = { rule: Rule; message: string; fields: Field[] };
 export type AddGameError = Refusal<AddGameRule, AddGameField>;
@@ -123,10 +126,16 @@ function optionalText(raw: string | undefined): string | undefined {
   return cleanName(raw ?? "") || undefined;
 }
 
+// Longueurs maximales, mesurées après nettoyage : bornent ce qu'une saisie forgée peut stocker.
+const MAX_NAME = 100;
+const MAX_PUBLISHER = 100;
+const MAX_NOTES = 2000;
+
 // Valide et convertit la saisie brute. Partagé par l'ajout et la modification : mêmes règles.
 function validate(input: AddGameInput): { ok: true; value: NewGame } | { ok: false; error: AddGameError } {
   const name = cleanName(input.name);
   if (!name) return refuse("name-required", "Le nom est obligatoire.", "name");
+  if (name.length > MAX_NAME) return refuse("name-too-long", `Le nom ne peut pas dépasser ${MAX_NAME} caractères.`, "name");
 
   const status = input.status || "envie";
   if (!isGameStatus(status)) return refuse("status-invalid", "Le statut doit être « possédé » ou « envie ».", "status");
@@ -142,7 +151,12 @@ function validate(input: AddGameInput): { ok: true; value: NewGame } | { ok: fal
   const minAge = positiveInt(input.minAge);
   if (minAge === null) return refuse("age-positive-integer", "L'âge minimum doit être un entier supérieur à 0 (en années).", "minAge");
 
-  const details = omitUndefined({ minPlayers, maxPlayers, duration, minAge, publisher: optionalText(input.publisher), notes: input.notes?.trim() || undefined });
+  const publisher = optionalText(input.publisher);
+  if (publisher && publisher.length > MAX_PUBLISHER) return refuse("publisher-too-long", `L'éditeur ne peut pas dépasser ${MAX_PUBLISHER} caractères.`, "publisher");
+  const notes = input.notes?.trim() || undefined;
+  if (notes && notes.length > MAX_NOTES) return refuse("notes-too-long", `Les notes ne peuvent pas dépasser ${MAX_NOTES} caractères.`, "notes");
+
+  const details = omitUndefined({ minPlayers, maxPlayers, duration, minAge, publisher, notes });
   return { ok: true, value: { name, key: normalizeKey(name), status, ...details } };
 }
 
