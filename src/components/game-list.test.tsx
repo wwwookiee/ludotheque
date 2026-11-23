@@ -49,3 +49,9 @@ test("lot 5, critère 4 : une recherche sans résultat affiche un état vide dé
   expect(html).toContain("Aucun jeu ne correspond");
   expect(html).not.toContain(">Aucun jeu<");
 });
+
+test("le nombre de jeux affichés est annoncé, au singulier comme au pluriel", () => {
+  const two = [{ id: "1", name: "Azul", status: "envie" as const }, { id: "2", name: "Catan", status: "possede" as const }];
+  expect(renderToString(<GameList updateAction={update} deleteAction={remove} games={two} />)).toContain("2 jeux");
+  expect(renderToString(<GameList updateAction={update} deleteAction={remove} games={two.slice(0, 1)} filtered />)).toContain("1 jeu correspond");
+});

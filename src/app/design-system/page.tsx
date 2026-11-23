@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 // Classes écrites en entier : Tailwind ne détecte pas les noms construits.
 const colors = [
@@ -130,6 +131,18 @@ export default function DesignSystem() {
             <Button size="sm" variant="ghost">Supprimer</Button>
           </CardFooter>
         </Card>
+      </Section>
+
+      <Section title="Panneau latéral">
+        <Sheet>
+          <SheetTrigger render={<Button variant="outline" className="w-fit" />}>Ouvrir le panneau</SheetTrigger>
+          <SheetContent>
+            <SheetHeader>
+              <SheetTitle>Ajouter un jeu</SheetTitle>
+              <SheetDescription>Le formulaire d&apos;ajout s&apos;ouvre ici, la liste reste derrière.</SheetDescription>
+            </SheetHeader>
+          </SheetContent>
+        </Sheet>
       </Section>
     </main>
   );

@@ -18,13 +18,21 @@ paths:
 - Le dépôt mémoire ne sert qu'aux tests et à l'exemple : il ne persiste rien. Tant que
   `container.ts` le branche, le critère « mes jeux sont toujours là après redémarrage » n'est
   pas rempli.
-- Les clés et l'URL de la base viennent de `.env.local`, jamais du code.
+- Les clés et l'URL de la base viennent de l'environnement, jamais du code :
+  - en local, rien : sans `DATABASE_URL`, l'app utilise `file:local.db`. Ne jamais mettre les
+    valeurs Turso dans `.env.local`, sinon l'app locale écrit dans la base en ligne ;
+  - en ligne, `DATABASE_URL` et `DATABASE_AUTH_TOKEN` dans les variables Vercel ;
+  - pour `pnpm db:push` (schéma et copie de `local.db` vers Turso), dans `.env.turso`, ignoré par git.
+- Les scripts de `scripts/` qui touchent la base passent par `src/data` (`migrate`, `exportGames`),
+  sans requête à eux.
 
 ## Comment vérifier
 
 - `pnpm lint` : bloque `@libsql/*` dans `src/app` et `src/services`.
-- Rien hors de `src/data` n'importe la base (doit ne rien afficher) :
+- Rien hors de `src/data` n'importe la base (doit ne rien afficher ; `scripts/` crée seulement le client) :
   `grep -rn "@libsql" src --include='*.ts' --include='*.tsx' | grep -v '^src/data/'`
+- Aucune requête SQL dans `scripts/` (doit ne rien afficher) :
+  `grep -rniE 'select|insert|update|delete|execute|batch' scripts`
 - SQL concaténé (doit ne rien afficher, aide à la relecture, pas une garantie) :
   `grep -rnE '\$\{' src/data --include='*.ts' | grep -iE 'select|insert|update|delete'`
 - `pnpm test` passe, sur chaque implémentation une fois la suite de contrat écrite.

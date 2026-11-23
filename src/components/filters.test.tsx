@@ -43,3 +43,9 @@ test("lot 6, critère 5 : un N refusé affiche le message du service et signale 
   expect(invalidCount(html)).toBe(1);
   expect(html).toContain('aria-describedby="filters-error"');
 });
+
+test("statut en boutons : seul le statut actif est enfoncé (vide = « Tous »)", () => {
+  expect(view({ ...empty, status: "possede" })).toMatch(/aria-pressed="true"[^>]*>Possédé</);
+  expect((view({ ...empty, status: "" }).match(/aria-pressed="true"/g) ?? []).length).toBe(1);
+  expect(view({ ...empty, status: "" })).toMatch(/aria-pressed="true"[^>]*>Tous</);
+});
