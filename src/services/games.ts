@@ -99,6 +99,12 @@ export async function listGames(repo: GameRepository, filters: GameFilters = {})
   return [...games].sort((a, b) => (key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : 0));
 }
 
+// Retire les clés valant undefined : un détail non renseigné est absent du jeu (jamais null ni undefined).
+// Les noms de champs restent vérifiés par le type de l'objet passé.
+export function omitUndefined<T extends Record<string, unknown>>(values: T): { [K in keyof T]?: Exclude<T[K], undefined> } {
+  return Object.fromEntries(Object.entries(values).filter(([, v]) => v !== undefined)) as { [K in keyof T]?: Exclude<T[K], undefined> };
+}
+
 const refusal = <Rule extends string, Field extends string>(rule: Rule, message: string, ...fields: Field[]): Refusal<Rule, Field> => ({ rule, message, fields });
 const refuse = (rule: AddGameRule, message: string, ...fields: AddGameField[]) => ({ ok: false, error: refusal(rule, message, ...fields) }) as const;
 const notFound = () => ({ ok: false, error: refusal<"game-not-found", never>("game-not-found", "Ce jeu n'existe plus.") }) as const;
@@ -134,9 +140,8 @@ function validate(input: AddGameInput): { ok: true; value: NewGame } | { ok: fal
   const minAge = positiveInt(input.minAge);
   if (minAge === null) return refuse("age-positive-integer", "L'âge minimum doit être un entier supérieur à 0 (en années).", "minAge");
 
-  const details = { minPlayers, maxPlayers, duration, minAge, publisher: optionalText(input.publisher), notes: input.notes?.trim() || undefined };
-  const present = Object.fromEntries(Object.entries(details).filter(([, v]) => v !== undefined));
-  return { ok: true, value: { name, key: normalizeKey(name), status, ...present } };
+  const details = omitUndefined({ minPlayers, maxPlayers, duration, minAge, publisher: optionalText(input.publisher), notes: input.notes?.trim() || undefined });
+  return { ok: true, value: { name, key: normalizeKey(name), status, ...details } };
 }
 
 const duplicate = () => refuse("name-duplicate", "Un jeu porte déjà ce nom.", "name");
