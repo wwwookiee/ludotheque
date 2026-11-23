@@ -255,3 +255,44 @@ describe("removeGame · lot 4 : supprimer un jeu", () => {
     expect(await listGames(repo)).toHaveLength(1);
   });
 });
+
+describe("recherche · lot 5 : listGames filtré par nom", () => {
+  const base = () => fakeRepo([game("1", "Catan"), game("2", "Azul"), game("3", "Les Colons")]);
+  const names = async (repo: GameRepository, q?: string) => (await listGames(repo, { q })).map((g) => g.name);
+
+  test("critère 1 : « an » → Catan", async () => {
+    expect(await names(base(), "an")).toEqual(["Catan"]);
+  });
+
+  test("le nom contient le texte, pas seulement au début", async () => {
+    expect(await names(base(), "colo")).toEqual(["Les Colons"]);
+    expect(await names(base(), "zul")).toEqual(["Azul"]);
+  });
+
+  test.each(["elan", "ÉLAN", "  Élan "])("critère 2 : %j trouve « Élan » (sans casse ni accents)", async (q) => {
+    expect(await names(fakeRepo([game("1", "Élan"), game("2", "Azul")]), q)).toEqual(["Élan"]);
+  });
+
+  test.each([undefined, "", "   "])("critère 3 : recherche vide (%j) → tous les jeux, triés", async (q) => {
+    expect(await names(base(), q)).toEqual(["Azul", "Catan", "Les Colons"]);
+  });
+
+  test("critère 4 : recherche sans résultat → liste vide", async () => {
+    expect(await names(base(), "zzz")).toEqual([]);
+  });
+
+  test("les espaces multiples de la recherche sont réduits comme ceux des noms", async () => {
+    expect(await names(base(), "les    colons")).toEqual(["Les Colons"]);
+  });
+
+  test("critère 5 : après ajout, modification, suppression, la même recherche reste appliquée", async () => {
+    const repo = fakeRepo([game("1", "Catan")]);
+    await addGame(repo, { name: "Catane" });
+    await addGame(repo, { name: "Azul" });
+    expect(await names(repo, "an")).toEqual(["Catan", "Catane"]);
+    await updateGame(repo, "1", { name: "Colons" });
+    expect(await names(repo, "an")).toEqual(["Catane"]);
+    await removeGame(repo, "2");
+    expect(await names(repo, "an")).toEqual([]);
+  });
+});

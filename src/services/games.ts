@@ -69,8 +69,16 @@ export function normalizeKey(name: string): string {
   return cleanName(name).normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
 }
 
-export async function listGames(repo: GameRepository): Promise<Game[]> {
-  const games = await repo.list();
+export type GameFilters = { q?: string };
+
+// Même normalisation que le tri et l'unicité : sans casse, sans accents, espaces réduits.
+export function filterGames(games: Game[], filters: GameFilters = {}): Game[] {
+  const q = normalizeKey(filters.q ?? "");
+  return q ? games.filter((g) => normalizeKey(g.name).includes(q)) : games;
+}
+
+export async function listGames(repo: GameRepository, filters: GameFilters = {}): Promise<Game[]> {
+  const games = filterGames(await repo.list(), filters);
   const key = (g: Game) => normalizeKey(g.name);
   return [...games].sort((a, b) => (key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : 0));
 }

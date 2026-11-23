@@ -43,3 +43,9 @@ test("lot 2, critère 4 : un jeu sans détail n'a pas de ligne de détails", () 
   expect(html).not.toContain("joueur");
   expect(html).not.toContain("data-slot=\"game-details\"");
 });
+
+test("lot 5, critère 4 : une recherche sans résultat affiche un état vide dédié", () => {
+  const html = renderToString(<GameList updateAction={update} deleteAction={remove} games={[]} filtered />);
+  expect(html).toContain("Aucun jeu ne correspond");
+  expect(html).not.toContain(">Aucun jeu<");
+});
