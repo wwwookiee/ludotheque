@@ -32,9 +32,18 @@ export function AddGameFormView({
 
 export function AddGameForm({
   action,
+  onAdded,
 }: {
   action: (prev: AddGameState, formData: FormData) => Promise<AddGameState>;
+  onAdded?: () => void;
 }) {
-  const [state, formAction, pending] = useActionState(action, { error: null, fields: [], values: emptyValues });
+  const [state, formAction, pending] = useActionState(
+    async (prev: AddGameState, formData: FormData) => {
+      const next = await action(prev, formData);
+      if (!next.error) onAdded?.(); // ajouté : le panneau peut se fermer
+      return next;
+    },
+    { error: null, fields: [], values: emptyValues },
+  );
   return <AddGameFormView state={state} action={formAction} pending={pending} />;
 }

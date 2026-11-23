@@ -1,8 +1,9 @@
 import { Suspense } from "react";
 import { addGameAction, deleteGameAction, updateGameAction } from "@/app/actions";
-import { AddGameForm } from "@/components/add-game-form";
+import { AddGamePanel } from "@/components/add-game-panel";
 import { Filters } from "@/components/filters";
 import { GameList } from "@/components/game-list";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { games } from "@/container";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -25,9 +26,14 @@ async function Games({ searchParams }: { searchParams: SearchParams }) {
 
 export default function Home({ searchParams }: { searchParams: SearchParams }) {
   return (
-    <main className="mx-auto flex w-full max-w-xl flex-col gap-6 p-8">
-      <h1 className="text-3xl font-bold">Ma ludothèque</h1>
-      <AddGameForm action={addGameAction} />
+    <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8 sm:px-8">
+      <header className="flex flex-wrap items-center justify-between gap-4">
+        <h1 className="font-heading text-4xl font-bold">Ma ludothèque</h1>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <AddGamePanel action={addGameAction} />
+        </div>
+      </header>
       <Suspense fallback={<p className="text-muted-foreground">Chargement…</p>}>
         <Games searchParams={searchParams} />
       </Suspense>

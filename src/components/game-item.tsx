@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import type { AddGameState, DeleteState } from "@/components/add-game-values";
 import { formatDetails, toValues } from "@/components/game-details";
 import { GameFields } from "@/components/game-fields";
+import { Pencil, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { Game } from "@/services/games";
@@ -12,7 +13,7 @@ export type UpdateAction = (id: string, prev: AddGameState, formData: FormData) 
 
 export type DeleteAction = (id: string) => Promise<DeleteState>;
 
-const itemClass = "rounded-lg border border-border bg-card p-3 text-card-foreground";
+const itemClass = "rounded-xl border bg-card p-4 text-card-foreground";
 
 function CancelButton({ onCancel }: { onCancel: () => void }) {
   return (
@@ -26,25 +27,27 @@ function CancelButton({ onCancel }: { onCancel: () => void }) {
 export function GameRow({ game, onEdit, onAskDelete }: { game: Game; onEdit: () => void; onAskDelete: () => void }) {
   const line = formatDetails(game);
   return (
-    <li className={`${itemClass} flex flex-col gap-1`}>
-      <div className="flex items-center justify-between gap-2">
-        <span>{game.name}</span>
-        <div className="flex items-center gap-2">
-          <Badge variant={game.status === "possede" ? "default" : "secondary"}>{game.status === "possede" ? "Possédé" : "Envie"}</Badge>
-          <Button type="button" variant="ghost" size="sm" aria-label={`Modifier ${game.name}`} onClick={onEdit}>
-            Modifier
-          </Button>
-          <Button type="button" variant="ghost" size="sm" aria-label={`Supprimer ${game.name}`} onClick={onAskDelete}>
-            Supprimer
-          </Button>
-        </div>
+    <li className={`${itemClass} flex flex-col gap-2 border-border`}>
+      <div className="flex items-start justify-between gap-2">
+        <h2 className="font-heading text-lg font-semibold leading-tight">{game.name}</h2>
+        <Badge variant={game.status === "possede" ? "default" : "secondary"}>{game.status === "possede" ? "Possédé" : "Envie"}</Badge>
       </div>
       {line && (
         <p data-slot="game-details" className="text-sm text-muted-foreground">
           {line}
         </p>
       )}
-      {game.notes && <p className="text-sm">{game.notes}</p>}
+      {game.notes && <p className="line-clamp-2 text-sm">{game.notes}</p>}
+      <div className="mt-auto flex justify-end gap-1 border-t border-border pt-2">
+        <Button type="button" variant="ghost" aria-label={`Modifier ${game.name}`} onClick={onEdit}>
+          <Pencil />
+          Modifier
+        </Button>
+        <Button type="button" variant="ghost" aria-label={`Supprimer ${game.name}`} onClick={onAskDelete}>
+          <Trash2 />
+          Supprimer
+        </Button>
+      </div>
     </li>
   );
 }
@@ -53,7 +56,7 @@ export function GameRow({ game, onEdit, onAskDelete }: { game: Game; onEdit: () 
 export function GameEditForm({ game, state, action, pending, onCancel }: { game: Game; state: AddGameState; action: (formData: FormData) => void; pending: boolean; onCancel: () => void }) {
   const prefix = `edit-${game.id}-`;
   return (
-    <li className={itemClass}>
+    <li className={`${itemClass} col-span-full border-border`}>
       <form action={action} className="flex flex-col gap-4">
         <GameFields prefix={prefix} values={state.values} fields={state.fields} errorId={`${prefix}form-error`} />
         {state.error && (
@@ -75,8 +78,8 @@ export function GameEditForm({ game, state, action, pending, onCancel }: { game:
 // Confirmation : le jeu reste affiché et rien n'est supprimé tant que la suppression n'est pas confirmée.
 export function GameDeleteConfirm({ game, state, action, pending, onCancel }: { game: Game; state: DeleteState; action: (formData: FormData) => void; pending: boolean; onCancel: () => void }) {
   return (
-    <li className={`${itemClass} flex flex-col gap-2`}>
-      <span>{game.name}</span>
+    <li className={`${itemClass} flex flex-col gap-2 border-destructive`}>
+      <h2 className="font-heading text-lg font-semibold leading-tight">{game.name}</h2>
       <form action={action} className="flex flex-col gap-2">
         <p>{`Supprimer « ${game.name} » ? Cette action est définitive.`}</p>
         {state.error && (
