@@ -69,3 +69,22 @@ test("migration : deux anciens jeux au même nom normalisé → erreur claire, b
   const cols = (await client.execute("PRAGMA table_info(games)")).rows.map((r) => String(r.name));
   expect(cols).toEqual(["id", "name", "status"]);
 });
+
+test("lot 4, critère 4 : un jeu supprimé n'est plus dans la liste après réouverture de la base", async () => {
+  const file = join(tmpdir(), `ludotheque-test-suppr-${process.pid}-${Date.now()}.db`);
+  const url = `file:${file}`;
+  try {
+    const first = createClient({ url });
+    const repo = createLibsqlRepository(first);
+    const catan = await repo.create({ name: "Catan", key: "catan", status: "envie" });
+    await repo.create({ name: "Azul", key: "azul", status: "envie" });
+    await repo.remove(catan.id);
+    first.close();
+
+    const second = createClient({ url });
+    expect((await createLibsqlRepository(second).list()).map((g) => g.name)).toEqual(["Azul"]);
+    second.close();
+  } finally {
+    rmSync(file, { force: true });
+  }
+});

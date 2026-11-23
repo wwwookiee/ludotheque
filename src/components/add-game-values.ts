@@ -14,3 +14,5 @@ export type AddGameValues = {
 export type AddGameState = { error: string | null; fields: AddGameField[]; values: AddGameValues };
 
 export const emptyValues: AddGameValues = { name: "", status: "envie", minPlayers: "", maxPlayers: "", duration: "", minAge: "", publisher: "", notes: "" };
+
+export type DeleteState = { error: string | null };
