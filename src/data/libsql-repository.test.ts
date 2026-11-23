@@ -65,7 +65,7 @@ test("migration : deux anciens jeux au même nom normalisé → erreur claire, b
   await client.execute("CREATE TABLE games (id TEXT PRIMARY KEY, name TEXT NOT NULL, status TEXT NOT NULL)");
   await client.execute("INSERT INTO games (id, name, status) VALUES ('1', 'Catan', 'envie'), ('2', 'catan', 'envie')");
   const repo = createLibsqlRepository(client, { keyOf: normalizeKey });
-  await expect(repo.list()).rejects.toThrow(/Migration impossible/);
+  await expect(repo.list()).rejects.toThrow(/Migration impossible.*« Catan » et « catan »/);
   const cols = (await client.execute("PRAGMA table_info(games)")).rows.map((r) => String(r.name));
   expect(cols).toEqual(["id", "name", "status"]);
 });

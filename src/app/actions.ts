@@ -7,7 +7,7 @@ import { games } from "@/container";
 export async function addGameAction(_prev: AddGameState, formData: FormData): Promise<AddGameState> {
   const values = Object.fromEntries(Object.keys(emptyValues).map((k) => [k, String(formData.get(k) ?? "")])) as AddGameValues;
   const result = await games.add(values);
-  if (!result.ok) return { error: result.error.message, values };
+  if (!result.ok) return { error: result.error.message, fields: result.error.fields, values };
   revalidatePath("/");
-  return { error: null, values: emptyValues };
+  return { error: null, fields: [], values: emptyValues };
 }

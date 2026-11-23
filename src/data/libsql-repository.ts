@@ -38,17 +38,18 @@ export function createLibsqlRepository(client: Client, options: { keyOf?: (name:
 
     if (!columns.has("key")) {
       if (!options.keyOf) throw new Error("Migration impossible : la table n'a pas de colonne key et aucun calcul de clé n'est fourni.");
-      const keys = new Map<string, string>();
+      const keys = new Map<string, { id: string; name: string }>();
       for (const row of (await client.execute("SELECT id, name FROM games")).rows) {
         const key = options.keyOf(String(row.name));
-        if (keys.has(key)) throw new Error(`Migration impossible : deux jeux ont le même nom une fois normalisé (« ${key} »).`);
-        keys.set(key, String(row.id));
+        const found = keys.get(key);
+        if (found) throw new Error(`Migration impossible : « ${found.name} » et « ${String(row.name)} » ont le même nom une fois normalisé. Renomme ou supprime l'un des deux dans la base.`);
+        keys.set(key, { id: String(row.id), name: String(row.name) });
       }
       // Une seule transaction : tout est appliqué, ou rien.
       await client.batch(
         [
           "ALTER TABLE games ADD COLUMN key TEXT",
-          ...[...keys].map(([key, id]) => ({ sql: "UPDATE games SET key = ? WHERE id = ?", args: [key, id] })),
+          ...[...keys].map(([key, { id }]) => ({ sql: "UPDATE games SET key = ? WHERE id = ?", args: [key, id] })),
           "CREATE UNIQUE INDEX games_key ON games(key)",
         ],
         "write",

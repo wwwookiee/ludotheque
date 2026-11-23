@@ -37,7 +37,9 @@ export type AddGameRule =
   | "players-min-max"
   | "duration-positive-integer"
   | "age-positive-integer";
-export type AddGameError = { rule: AddGameRule; message: string };
+// Champs de la saisie fautifs, pour que la présentation signale le bon champ.
+export type AddGameField = "name" | "status" | "minPlayers" | "maxPlayers" | "duration" | "minAge";
+export type AddGameError = { rule: AddGameRule; message: string; fields: AddGameField[] };
 
 // Saisie brute du formulaire : tout est du texte, c'est le service qui valide et convertit.
 export type AddGameInput = {
@@ -68,7 +70,7 @@ export async function listGames(repo: GameRepository): Promise<Game[]> {
   return [...games].sort((a, b) => (key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : 0));
 }
 
-const refuse = (rule: AddGameRule, message: string) => ({ ok: false, error: { rule, message } }) as const;
+const refuse = (rule: AddGameRule, message: string, ...fields: AddGameField[]) => ({ ok: false, error: { rule, message, fields } }) as const;
 
 // Vide ou espaces → undefined (non renseigné). Sinon un entier > 0, ou null si la saisie est invalide.
 function positiveInt(raw: string | undefined): number | undefined | null {
@@ -84,24 +86,24 @@ function optionalText(raw: string | undefined): string | undefined {
 
 export async function addGame(repo: GameRepository, input: AddGameInput): Promise<AddGameResult> {
   const name = cleanName(input.name);
-  if (!name) return refuse("name-required", "Le nom est obligatoire.");
+  if (!name) return refuse("name-required", "Le nom est obligatoire.", "name");
 
   const status = input.status || "envie";
-  if (!(GAME_STATUSES as readonly string[]).includes(status)) return refuse("status-invalid", "Le statut doit être « possédé » ou « envie ».");
+  if (!(GAME_STATUSES as readonly string[]).includes(status)) return refuse("status-invalid", "Le statut doit être « possédé » ou « envie ».", "status");
 
   const minPlayers = positiveInt(input.minPlayers);
   const maxPlayers = positiveInt(input.maxPlayers);
-  if (minPlayers === null || maxPlayers === null) return refuse("players-positive-integer", "Le nombre de joueurs doit être un entier supérieur à 0.");
-  if ((minPlayers === undefined) !== (maxPlayers === undefined)) return refuse("players-pair", "Renseigne le nombre de joueurs min et max ensemble, ou aucun des deux.");
-  if (minPlayers !== undefined && maxPlayers !== undefined && minPlayers > maxPlayers) return refuse("players-min-max", "Le minimum de joueurs ne peut pas dépasser le maximum.");
+  if (minPlayers === null || maxPlayers === null) return refuse("players-positive-integer", "Le nombre de joueurs doit être un entier supérieur à 0.", "minPlayers", "maxPlayers");
+  if ((minPlayers === undefined) !== (maxPlayers === undefined)) return refuse("players-pair", "Renseigne le nombre de joueurs min et max ensemble, ou aucun des deux.", "minPlayers", "maxPlayers");
+  if (minPlayers !== undefined && maxPlayers !== undefined && minPlayers > maxPlayers) return refuse("players-min-max", "Le minimum de joueurs ne peut pas dépasser le maximum.", "minPlayers", "maxPlayers");
 
   const duration = positiveInt(input.duration);
-  if (duration === null) return refuse("duration-positive-integer", "La durée doit être un entier supérieur à 0 (en minutes).");
+  if (duration === null) return refuse("duration-positive-integer", "La durée doit être un entier supérieur à 0 (en minutes).", "duration");
   const minAge = positiveInt(input.minAge);
-  if (minAge === null) return refuse("age-positive-integer", "L'âge minimum doit être un entier supérieur à 0 (en années).");
+  if (minAge === null) return refuse("age-positive-integer", "L'âge minimum doit être un entier supérieur à 0 (en années).", "minAge");
 
   const key = normalizeKey(name);
-  const duplicate = refuse("name-duplicate", "Un jeu porte déjà ce nom.");
+  const duplicate = refuse("name-duplicate", "Un jeu porte déjà ce nom.", "name");
   if ((await repo.list()).some((g) => normalizeKey(g.name) === key)) return duplicate;
 
   const details = { minPlayers, maxPlayers, duration, minAge, publisher: optionalText(input.publisher), notes: input.notes?.trim() || undefined };

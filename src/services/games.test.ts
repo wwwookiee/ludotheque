@@ -148,3 +148,21 @@ describe("addGame · lot 2 : détails du jeu", () => {
     expect(result).toMatchObject({ ok: true, game: { status: "possede" } });
   });
 });
+
+describe("addGame · champs fautifs (pour que la présentation signale le bon champ)", () => {
+  test.each([
+    [{ name: "  " }, "name-required", ["name"]],
+    [{ name: "Catan", status: "nope" }, "status-invalid", ["status"]],
+    [{ name: "Catan", minPlayers: "2" }, "players-pair", ["minPlayers", "maxPlayers"]],
+    [{ name: "Catan", minPlayers: "5", maxPlayers: "3" }, "players-min-max", ["minPlayers", "maxPlayers"]],
+    [{ name: "Catan", minPlayers: "0", maxPlayers: "3" }, "players-positive-integer", ["minPlayers", "maxPlayers"]],
+    [{ name: "Catan", duration: "abc" }, "duration-positive-integer", ["duration"]],
+    [{ name: "Catan", minAge: "0" }, "age-positive-integer", ["minAge"]],
+  ])("%j → règle %s sur %j", async (input, rule, fields) => {
+    expect(await addGame(fakeRepo(), input)).toMatchObject({ ok: false, error: { rule, fields } });
+  });
+
+  test("un doublon désigne le champ nom", async () => {
+    expect(await addGame(fakeRepo([game("1", "Catan")]), { name: "catan" })).toMatchObject({ ok: false, error: { rule: "name-duplicate", fields: ["name"] } });
+  });
+});
