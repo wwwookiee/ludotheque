@@ -22,6 +22,20 @@ export function describeRepositoryContract(name: string, make: () => GameReposit
       expect((await repo.list()).sort((x, y) => x.name.localeCompare(y.name))).toEqual([b, a]);
     });
 
+    test("lot 2 : tous les détails font l'aller-retour, create et list", async () => {
+      const repo = await make();
+      const full = { name: "Catan", key: "catan", status: "possede" as const, minPlayers: 2, maxPlayers: 4, duration: 45, minAge: 8, publisher: "Kosmos", notes: "Note" };
+      const created = await repo.create(full);
+      expect(created).toMatchObject({ minPlayers: 2, maxPlayers: 4, duration: 45, minAge: 8, publisher: "Kosmos", notes: "Note", status: "possede" });
+      expect(await repo.list()).toEqual([created]);
+    });
+
+    test("lot 2 : un jeu sans détail n'a aucun détail", async () => {
+      const repo = await make();
+      await repo.create({ name: "Azul", key: "azul", status: "envie" });
+      expect(Object.keys((await repo.list())[0]).sort()).toEqual(["id", "name", "status"]);
+    });
+
     test("refuse une clé déjà prise avec DuplicateGameError, sans rien stocker", async () => {
       const repo = await make();
       await repo.create({ name: "Catan", key: "catan", status: "envie" });
