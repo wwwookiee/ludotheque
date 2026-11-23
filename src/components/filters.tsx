@@ -1,12 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useRef, useTransition } from "react";
+import { applyFilter, toSearch, type FilterValues } from "@/components/filters-query";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-export type FilterValues = { q: string; status: string; players: string; duration: string };
 type FilterName = keyof FilterValues;
 type FilterError = { message: string; fields: ("status" | "players" | "duration")[] };
 
@@ -67,15 +67,17 @@ export function FiltersView({
 export function Filters({ values, error }: { values: FilterValues; error: FilterError | null }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
+  // Valeurs courantes côté client : l'URL du navigateur n'est à jour qu'à la fin de la navigation, donc deux
+  // changements rapides s'y perdraient. Initialisées depuis le serveur ; les champs texte sont non contrôlés,
+  // ils reflètent donc déjà ce que l'utilisateur a saisi.
+  const current = useRef(values);
   return (
     <FiltersView
       values={values}
       error={error}
       onChange={(name, value) => {
-        const params = new URLSearchParams(window.location.search);
-        if (value.trim() && !(name === "status" && value === "tous")) params.set(name, value);
-        else params.delete(name);
-        const qs = params.toString();
+        current.current = applyFilter(current.current, name, value);
+        const qs = toSearch(current.current);
         startTransition(() => router.replace(qs ? `/?${qs}` : "/", { scroll: false }));
       }}
     />

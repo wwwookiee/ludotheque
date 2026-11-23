@@ -19,14 +19,16 @@ export async function addGameAction(_prev: AddGameState, formData: FormData): Pr
 export async function updateGameAction(id: string, _prev: AddGameState, formData: FormData): Promise<AddGameState> {
   const values = readValues(formData);
   const result = await games.update(id, values);
-  if (!result.ok) return { error: result.error.message, fields: result.error.fields, values };
+  if (!result.ok) {
+    if (result.error.rule === "game-not-found") revalidatePath("/"); // supprimé ailleurs : la liste affichée est périmée
+    return { error: result.error.message, fields: result.error.fields, values };
+  }
   revalidatePath("/");
   return { error: null, fields: [], values };
 }
 
 export async function deleteGameAction(id: string): Promise<DeleteState> {
   const result = await games.remove(id);
-  if (!result.ok) return { error: result.error.message };
-  revalidatePath("/");
-  return { error: null };
+  revalidatePath("/"); // aussi si le jeu n'existe plus : la ligne périmée doit disparaître
+  return { error: result.ok ? null : result.error.message };
 }

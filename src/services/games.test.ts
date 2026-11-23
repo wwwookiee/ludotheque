@@ -373,4 +373,10 @@ describe("filtres · lot 6 : queryGames (recherche + statut + joueurs + durée)"
     expect(await names({ players: " 4 " })).toEqual(["Azul", "Catan"]);
     expect(await names({ players: "  ", duration: " " })).toEqual(["Azul", "Catan", "Mystère"]);
   });
+
+  test("le message d'un statut refusé ne conseille pas de valeur (la valeur attendue est « possede », pas « possédé »)", async () => {
+    const result = await queryGames(repo(), { status: "possédé" });
+    expect(result).toMatchObject({ ok: false, error: { rule: "status-filter-invalid" } });
+    if (!result.ok) expect(result.error.message).not.toMatch(/possédé|envie|«/);
+  });
 });

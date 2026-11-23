@@ -178,7 +178,7 @@ export type QueryGamesResult = { ok: true; games: Game[] } | { ok: false; error:
 export async function queryGames(repo: GameRepository, raw: RawFilters): Promise<QueryGamesResult> {
   const fail = (rule: FilterError["rule"], message: string, field: FilterField): QueryGamesResult => ({ ok: false, error: { rule, message, fields: [field] } });
   const status = raw.status?.trim() || "tous";
-  if (status !== "tous" && !(GAME_STATUSES as readonly string[]).includes(status)) return fail("status-filter-invalid", "Le statut doit être « tous », « possédé » ou « envie ».", "status");
+  if (status !== "tous" && !(GAME_STATUSES as readonly string[]).includes(status)) return fail("status-filter-invalid", "Le statut du filtre est invalide.", "status");
   const players = positiveInt(raw.players);
   if (players === null) return fail("players-filter-integer", "Le nombre de joueurs doit être un entier supérieur à 0.", "players");
   const maxDuration = positiveInt(raw.duration);
