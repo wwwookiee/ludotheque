@@ -5,9 +5,10 @@ import { createClient } from "@libsql/client";
 import { exportGames } from "../src/data/libsql-export.ts";
 import { migrate } from "../src/data/libsql-migrate.ts";
 
-const url = process.env.DATABASE_URL;
-if (!url || url.startsWith("file:")) {
-  console.error("DATABASE_URL doit désigner la base Turso (renseigne-la dans .env.turso).");
+const url = process.env.DATABASE_URL ?? "";
+// Connexion chiffrée seulement : avec http:// ou ws://, le jeton partirait en clair. Refuse aussi file: (base locale).
+if (!/^(libsql|https):\/\//.test(url)) {
+  console.error("DATABASE_URL doit désigner la base Turso, en libsql:// ou https:// (renseigne-la dans .env.turso).");
   process.exit(1);
 }
 
