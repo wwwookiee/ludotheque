@@ -15,6 +15,9 @@ est donc systématique, et elle est la seule qui compte.
   renvoyer son résultat. Aucune écriture ne contourne le service.
 - Le service valide tout avant le premier appel au dépôt : type, bornes, valeurs permises
   (statut), nettoyage, unicité. Le dépôt n'est jamais appelé avec une donnée non validée.
+  Seules exceptions : la migration de schéma et l'export vers un autre stockage, qui déplacent
+  des données déjà validées à leur création. Ils s'écrivent dans `src/data` ou dans un script,
+  jamais dans une entrée du client, et ils ne transforment pas la donnée.
 - La saisie entre dans le service sous sa forme brute (texte). Le service convertit : un
   nombre n'est pas parsé dans l'action ni dans le composant.
 - Aucun `as` ni type TypeScript ne fait passer une saisie du client pour une donnée validée :
