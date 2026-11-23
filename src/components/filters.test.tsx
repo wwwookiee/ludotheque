@@ -4,7 +4,11 @@ import { FiltersView } from "./filters";
 
 const noop = () => {};
 const empty = { q: "", status: "tous", players: "", duration: "" };
-const view = (values = empty, error: { message: string; fields: ("status" | "players" | "duration")[] } | null = null) =>
+
+test("lot 6 : un statut vide (URL sans paramètre) s'affiche comme « Tous »", () => {
+  expect(renderToString(<FiltersView values={{ ...empty, status: "" }} error={null} onChange={() => {}} />)).toContain("Tous");
+});
+const view = (values = empty, error: Parameters<typeof FiltersView>[0]["error"] = null) =>
   renderToString(<FiltersView values={values} error={error} onChange={noop} />);
 const invalidCount = (html: string) => (html.match(/aria-invalid="true"/g) ?? []).length;
 

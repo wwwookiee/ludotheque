@@ -12,15 +12,13 @@ const text = (v: string | string[] | undefined) => (typeof v === "string" ? v : 
 // Les paramètres d'URL sont lus dans Suspense (données dynamiques) ; le service valide et applique les filtres.
 async function Games({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
-  const raw = { q: text(params.q), status: text(params.status) || "tous", players: text(params.players), duration: text(params.duration) };
-  const result = await games.query(raw);
-  // Filtre refusé : on affiche le message du service et la liste sans filtre.
-  const list = result.ok ? result.games : await games.list();
-  const filtered = result.ok && (raw.q.trim() !== "" || raw.status !== "tous" || raw.players.trim() !== "" || raw.duration.trim() !== "");
+  const raw = { q: text(params.q), status: text(params.status), players: text(params.players), duration: text(params.duration) };
+  // Filtre refusé : le service renvoie le message et la liste sans filtre.
+  const { games: list, active, error } = await games.query(raw);
   return (
     <>
-      <Filters values={raw} error={result.ok ? null : result.error} />
-      <GameList games={list} updateAction={updateGameAction} deleteAction={deleteGameAction} filtered={filtered} />
+      <Filters values={raw} error={error} />
+      <GameList games={list} updateAction={updateGameAction} deleteAction={deleteGameAction} filtered={active} />
     </>
   );
 }

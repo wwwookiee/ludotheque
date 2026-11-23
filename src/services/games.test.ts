@@ -306,7 +306,7 @@ describe("filtres · lot 6 : queryGames (recherche + statut + joueurs + durée)"
   const repo = () => fakeRepo([catan, azul, nu]);
   const names = async (raw: Parameters<typeof queryGames>[1]) => {
     const result = await queryGames(repo(), raw);
-    if (!result.ok) throw new Error(`refusé : ${result.error.rule}`);
+    if (result.error) throw new Error(`refusé : ${result.error.rule}`);
     return result.games.map((g) => g.name);
   };
 
@@ -367,8 +367,26 @@ describe("filtres · lot 6 : queryGames (recherche + statut + joueurs + durée)"
     [{ status: "perdu" }, "status-filter-invalid", ["status"]],
   ])("critère 5 : %j refusé (%s)", async (raw, rule, fields) => {
     const result = await queryGames(repo(), raw);
-    expect(result).toMatchObject({ ok: false, error: { rule, fields } });
-    if (!result.ok) expect(result.error.message.length).toBeGreaterThan(10);
+    expect(result.error).toMatchObject({ rule, fields });
+    expect(result.error?.message.length).toBeGreaterThan(10);
+  });
+
+  test("un filtre refusé : la liste renvoyée est la liste complète, triée, sans aucun filtre, et rien n'est « actif »", async () => {
+    const result = await queryGames(repo(), { q: "catan", status: "possede", players: "0" });
+    expect(result.error).toMatchObject({ rule: "players-filter-integer" });
+    expect(result.games.map((g) => g.name)).toEqual(["Azul", "Catan", "Mystère"]);
+    expect(result.active).toBe(false);
+  });
+
+  test.each([
+    [{}, false],
+    [{ q: "  ", status: "tous", players: " ", duration: "" }, false],
+    [{ q: "a" }, true],
+    [{ status: "envie" }, true],
+    [{ players: "4" }, true],
+    [{ duration: "45" }, true],
+  ])("active : %j → %s (sert à choisir « Aucun jeu » ou « Aucun jeu ne correspond »)", async (raw, active) => {
+    expect((await queryGames(repo(), raw)).active).toBe(active);
   });
 
   test("les espaces autour d'un nombre sont ignorés, vide ou espaces = filtre inactif", async () => {
@@ -377,8 +395,8 @@ describe("filtres · lot 6 : queryGames (recherche + statut + joueurs + durée)"
   });
 
   test("le message d'un statut refusé ne conseille pas de valeur (la valeur attendue est « possede », pas « possédé »)", async () => {
-    const result = await queryGames(repo(), { status: "possédé" });
-    expect(result).toMatchObject({ ok: false, error: { rule: "status-filter-invalid" } });
-    if (!result.ok) expect(result.error.message).not.toMatch(/possédé|envie|«/);
+    const { error } = await queryGames(repo(), { status: "possédé" });
+    expect(error).toMatchObject({ rule: "status-filter-invalid" });
+    expect(error?.message).not.toMatch(/possédé|envie|«/);
   });
 });

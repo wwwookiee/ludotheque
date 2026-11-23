@@ -1,11 +1,11 @@
-import { DuplicateGameError, GAME_STATUSES, type Game, type GameRepository } from "@/services/games";
+import { DuplicateGameError, isGameStatus, type Game, type GameRepository } from "@/services/games";
 
 // Pour les tests et les exemples : ne persiste rien.
 export function createMemoryRepository(): GameRepository {
   const rows: { game: Game; key: string }[] = [];
   const taken = (key: string, except?: string) => rows.some((r) => r.key === key && r.game.id !== except);
   const checkStatus = (status: string) => {
-    if (!(GAME_STATUSES as readonly string[]).includes(status)) throw new Error(`Statut inconnu : ${status}`);
+    if (!isGameStatus(status)) throw new Error(`Statut inconnu : ${status}`);
   };
 
   return {

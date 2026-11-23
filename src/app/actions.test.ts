@@ -2,7 +2,7 @@ import { beforeEach, expect, test, vi } from "vitest";
 
 const { revalidatePath, remove, update } = vi.hoisted(() => ({ revalidatePath: vi.fn(), remove: vi.fn(), update: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath }));
-vi.mock("@/container", () => ({ games: { remove, update, add: vi.fn(), list: vi.fn() } }));
+vi.mock("@/container", () => ({ games: { remove, update, add: vi.fn() } }));
 
 import { deleteGameAction, updateGameAction } from "./actions";
 

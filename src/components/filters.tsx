@@ -3,14 +3,15 @@
 import { useRouter } from "next/navigation";
 import { useRef, useTransition } from "react";
 import { applyFilter, toSearch, type FilterValues } from "@/components/filters-query";
+import { ALL_STATUSES, type FilterError } from "@/services/games";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type FilterName = keyof FilterValues;
-type FilterError = { message: string; fields: ("status" | "players" | "duration")[] };
+type FilterIssue = Pick<FilterError, "message" | "fields">;
 
-const STATUS_LABELS = { tous: "Tous", possede: "Possédé", envie: "Envie" };
+const STATUS_LABELS = { [ALL_STATUSES]: "Tous", possede: "Possédé", envie: "Envie" };
 
 export function FiltersView({
   values,
@@ -18,11 +19,11 @@ export function FiltersView({
   onChange,
 }: {
   values: FilterValues;
-  error: FilterError | null;
+  error: FilterIssue | null;
   onChange: (name: FilterName, value: string) => void;
 }) {
   // Seul le champ refusé par le service est signalé invalide, et relié au message.
-  const flag = (name: "status" | "players" | "duration") =>
+  const flag = (name: FilterError["fields"][number]) =>
     error?.fields.includes(name) ? ({ "aria-invalid": true, "aria-describedby": "filters-error" } as const) : {};
   return (
     <div className="flex flex-col gap-3">
@@ -33,12 +34,12 @@ export function FiltersView({
       <div className="grid grid-cols-3 gap-3">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="filter-status">Statut</Label>
-          <Select value={values.status} onValueChange={(v) => onChange("status", String(v))} items={STATUS_LABELS}>
+          <Select value={values.status || ALL_STATUSES} onValueChange={(v) => onChange("status", String(v))} items={STATUS_LABELS}>
             <SelectTrigger id="filter-status" className="w-full" {...flag("status")}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="tous">Tous</SelectItem>
+              <SelectItem value={ALL_STATUSES}>Tous</SelectItem>
               <SelectItem value="possede">Possédé</SelectItem>
               <SelectItem value="envie">Envie</SelectItem>
             </SelectContent>
@@ -64,7 +65,7 @@ export function FiltersView({
 
 // Recherche et filtres vivent dans l'URL (?q=…&status=…&players=…&duration=…) : ils survivent à un ajout,
 // une modification ou une suppression, et se partagent. Le service les valide et les applique.
-export function Filters({ values, error }: { values: FilterValues; error: FilterError | null }) {
+export function Filters({ values, error }: { values: FilterValues; error: FilterIssue | null }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   // Valeurs courantes côté client : l'URL du navigateur n'est à jour qu'à la fin de la navigation, donc deux
