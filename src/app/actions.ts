@@ -5,8 +5,19 @@ import { emptyValues, type AddGameState, type AddGameValues, type DeleteState } 
 import { games } from "@/container";
 
 // Saisie brute du formulaire : que du texte, le service valide et convertit.
-const readValues = (formData: FormData) =>
-  Object.fromEntries(Object.keys(emptyValues).map((k) => [k, String(formData.get(k) ?? "")])) as AddGameValues;
+function readValues(formData: FormData): AddGameValues {
+  const text = (name: keyof AddGameValues) => String(formData.get(name) ?? "");
+  return {
+    name: text("name"),
+    status: text("status"),
+    minPlayers: text("minPlayers"),
+    maxPlayers: text("maxPlayers"),
+    duration: text("duration"),
+    minAge: text("minAge"),
+    publisher: text("publisher"),
+    notes: text("notes"),
+  };
+}
 
 export async function addGameAction(_prev: AddGameState, formData: FormData): Promise<AddGameState> {
   const values = readValues(formData);

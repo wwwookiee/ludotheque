@@ -1,27 +1,18 @@
 import type { AddGameValues } from "@/components/add-game-values";
+import { Field } from "@/components/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { AddGameField } from "@/services/games";
 
 const STATUS_LABELS = { possede: "Possédé", envie: "Envie" };
 
-function Field({ id, label, children }: { id: string; label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      {children}
-    </div>
-  );
-}
-
 // Champs communs à l'ajout et à la modification. prefix : rend les ids uniques quand plusieurs formulaires sont sur la page.
 export function GameFields({ prefix, values, fields, errorId }: { prefix: string; values: AddGameValues; fields: AddGameField[]; errorId: string }) {
   // Seuls les champs fautifs sont signalés invalides, et reliés au message d'erreur.
-  const flag = (id: AddGameField) => (fields.includes(id) ? ({ "aria-invalid": true, "aria-describedby": errorId } as const) : {});
+  const flag = (id: string) => (fields.some((f) => f === id) ? ({ "aria-invalid": true, "aria-describedby": errorId } as const) : {});
   const text = (id: keyof AddGameValues, label: string, numeric = false) => (
     <Field id={prefix + id} label={label}>
-      <Input id={prefix + id} name={id} defaultValue={values[id]} inputMode={numeric ? "numeric" : undefined} {...flag(id as AddGameField)} />
+      <Input id={prefix + id} name={id} defaultValue={values[id]} inputMode={numeric ? "numeric" : undefined} {...flag(id)} />
     </Field>
   );
   return (

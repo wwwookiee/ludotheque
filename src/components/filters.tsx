@@ -2,11 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useTransition } from "react";
+import { Field } from "@/components/field";
 import { applyFilter, toSearch, type FilterValues } from "@/components/filters-query";
-import { ALL_STATUSES, type FilterError } from "@/services/games";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ALL_STATUSES, type FilterError } from "@/services/games";
 
 type FilterName = keyof FilterValues;
 type FilterIssue = Pick<FilterError, "message" | "fields">;
@@ -27,13 +27,11 @@ export function FiltersView({
     error?.fields.includes(name) ? ({ "aria-invalid": true, "aria-describedby": "filters-error" } as const) : {};
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="search">Rechercher un jeu</Label>
+      <Field id="search" label="Rechercher un jeu">
         <Input id="search" name="q" type="text" role="searchbox" defaultValue={values.q} onChange={(e) => onChange("q", e.target.value)} />
-      </div>
+      </Field>
       <div className="grid grid-cols-3 gap-3">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="filter-status">Statut</Label>
+        <Field id="filter-status" label="Statut">
           <Select value={values.status || ALL_STATUSES} onValueChange={(v) => onChange("status", String(v))} items={STATUS_LABELS}>
             <SelectTrigger id="filter-status" className="w-full" {...flag("status")}>
               <SelectValue />
@@ -44,15 +42,13 @@ export function FiltersView({
               <SelectItem value="envie">Envie</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="filter-players">Joueurs</Label>
+        </Field>
+        <Field id="filter-players" label="Joueurs">
           <Input id="filter-players" name="players" inputMode="numeric" defaultValue={values.players} onChange={(e) => onChange("players", e.target.value)} {...flag("players")} />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="filter-duration">Durée max (min)</Label>
+        </Field>
+        <Field id="filter-duration" label="Durée max (min)">
           <Input id="filter-duration" name="duration" inputMode="numeric" defaultValue={values.duration} onChange={(e) => onChange("duration", e.target.value)} {...flag("duration")} />
-        </div>
+        </Field>
       </div>
       {error && (
         <p id="filters-error" role="alert" className="text-sm text-destructive">

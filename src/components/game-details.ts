@@ -1,3 +1,4 @@
+import type { AddGameValues } from "@/components/add-game-values";
 import type { Game } from "@/services/games";
 
 // Affichage seulement : « 2–4 joueurs · 45 min · 8 ans et + · Kosmos ». Un détail absent disparaît avec son séparateur.
@@ -14,10 +15,10 @@ export function formatDetails(g: Game): string {
 }
 
 // Valeurs d'un jeu sous forme de texte, pour préremplir le formulaire de modification.
-export function toValues(g: Game) {
+export function toValues(g: Game): AddGameValues {
   return {
     name: g.name,
-    status: g.status as string,
+    status: g.status,
     minPlayers: String(g.minPlayers ?? ""),
     maxPlayers: String(g.maxPlayers ?? ""),
     duration: String(g.duration ?? ""),
