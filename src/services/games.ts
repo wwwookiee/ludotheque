@@ -108,6 +108,8 @@ export function omitUndefined<T extends Record<string, unknown>>(values: T): { [
 const refusal = <Rule extends string, Field extends string>(rule: Rule, message: string, ...fields: Field[]): Refusal<Rule, Field> => ({ rule, message, fields });
 const refuse = (rule: AddGameRule, message: string, ...fields: AddGameField[]) => ({ ok: false, error: refusal(rule, message, ...fields) }) as const;
 const notFound = () => ({ ok: false, error: refusal<"game-not-found", never>("game-not-found", "Ce jeu n'existe plus.") }) as const;
+// L'id vient du client (forgeable) : seule une chaîne non vide part au dépôt, le reste ne désigne aucun jeu.
+const isId = (id: unknown): id is string => typeof id === "string" && id !== "";
 
 // Vide ou espaces → undefined (non renseigné). Sinon un entier > 0, ou null si la saisie est invalide.
 function positiveInt(raw: string | undefined): number | undefined | null {
@@ -158,7 +160,8 @@ export async function addGame(repo: GameRepository, input: AddGameInput): Promis
 }
 
 // Modifie un jeu : mêmes règles que l'ajout ; le dépôt ne compare pas un jeu à lui-même pour l'unicité.
-export async function updateGame(repo: GameRepository, id: string, input: AddGameInput): Promise<AddGameResult> {
+export async function updateGame(repo: GameRepository, id: unknown, input: AddGameInput): Promise<AddGameResult> {
+  if (!isId(id)) return notFound();
   const checked = validate(input);
   if (!checked.ok) return checked;
   try {
@@ -173,7 +176,8 @@ export async function updateGame(repo: GameRepository, id: string, input: AddGam
 export type RemoveGameResult = { ok: true } | { ok: false; error: Refusal<"game-not-found", never> };
 
 // La confirmation est un geste de l'écran : quand le service reçoit la demande, elle a été faite.
-export async function removeGame(repo: GameRepository, id: string): Promise<RemoveGameResult> {
+export async function removeGame(repo: GameRepository, id: unknown): Promise<RemoveGameResult> {
+  if (!isId(id)) return notFound();
   return (await repo.remove(id)) ? { ok: true } : notFound();
 }
 

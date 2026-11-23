@@ -8,6 +8,6 @@ const repo = createLibsqlRepositoryFromEnv({ keyOf: normalizeKey });
 export const games = {
   query: (raw: RawFilters) => queryGames(repo, raw),
   add: (input: AddGameInput) => addGame(repo, input),
-  update: (id: string, input: AddGameInput) => updateGame(repo, id, input),
-  remove: (id: string) => removeGame(repo, id),
+  update: (id: unknown, input: AddGameInput) => updateGame(repo, id, input),
+  remove: (id: unknown) => removeGame(repo, id),
 };

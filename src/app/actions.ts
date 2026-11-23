@@ -27,7 +27,7 @@ export async function addGameAction(_prev: AddGameState, formData: FormData): Pr
   return { error: null, fields: [], values: emptyValues };
 }
 
-export async function updateGameAction(id: string, _prev: AddGameState, formData: FormData): Promise<AddGameState> {
+export async function updateGameAction(id: unknown, _prev: AddGameState, formData: FormData): Promise<AddGameState> {
   const values = readValues(formData);
   const result = await games.update(id, values);
   if (!result.ok) {
@@ -38,7 +38,7 @@ export async function updateGameAction(id: string, _prev: AddGameState, formData
   return { error: null, fields: [], values };
 }
 
-export async function deleteGameAction(id: string): Promise<DeleteState> {
+export async function deleteGameAction(id: unknown): Promise<DeleteState> {
   const result = await games.remove(id);
   revalidatePath("/"); // aussi si le jeu n'existe plus : la ligne périmée doit disparaître
   return { error: result.ok ? null : result.error.message };

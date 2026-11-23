@@ -258,6 +258,23 @@ describe("removeGame · lot 4 : supprimer un jeu", () => {
   });
 });
 
+describe("identifiant forgé (#19) : refusé avant le dépôt", () => {
+  // Un id arrive du client : une action serveur peut être appelée avec n'importe quelle valeur sérialisable.
+  const forged: unknown[] = [{}, ["1"], 1, null, undefined, ""];
+
+  test.each(forged)("updateGame(%j) → « game-not-found », le dépôt n'est pas appelé", async (id) => {
+    const repo = fakeRepo([game("1", "Catan")]);
+    expect(await updateGame(repo, id, { name: "Azul" })).toMatchObject({ ok: false, error: { rule: "game-not-found" } });
+    expect(repo.update).not.toHaveBeenCalled();
+  });
+
+  test.each(forged)("removeGame(%j) → « game-not-found », le dépôt n'est pas appelé", async (id) => {
+    const repo = fakeRepo([game("1", "Catan")]);
+    expect(await removeGame(repo, id)).toMatchObject({ ok: false, error: { rule: "game-not-found" } });
+    expect(repo.remove).not.toHaveBeenCalled();
+  });
+});
+
 describe("recherche · lot 5 : listGames filtré par nom", () => {
   const base = () => fakeRepo([game("1", "Catan"), game("2", "Azul"), game("3", "Les Colons")]);
   const names = async (repo: GameRepository, q?: string) => (await listGames(repo, { q })).map((g) => g.name);
