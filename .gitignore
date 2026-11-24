@@ -44,3 +44,7 @@ next-env.d.ts
 
 # base SQLite locale
 local.db*
+
+# fichiers locaux Claude Code
+.claude/settings.local.json
+CLAUDE.local.md
