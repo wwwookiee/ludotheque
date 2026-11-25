@@ -7,6 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Ludothèque : bibliothèque personnelle de jeux de plateau. Le besoin, les règles métier, les filtres
 et les critères d'acceptation sont dans `INTENT.md`. Le découpage en lots (un lot = une issue
 GitHub, critères en Étant donné / quand / alors) est dans `lots.md`.
+Les décisions d'architecture sont dans `docs/decisions/` (un ADR par décision) : lis l'ADR concerné
+avant de changer une brique.
 
 ## Commandes (pnpm)
 
